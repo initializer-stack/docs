@@ -1,0 +1,135 @@
+---
+// 랜딩의 맨 위 막대: 로고 · 큰 갈래 네 개 · 색 모드 · GitHub. 좁은 화면에서는 갈래를 메뉴 버튼(popover) 안으로 넣는다
+// (문서 페이지는 자기 틀이 있다. 페이지 메뉴와 같은 popover 방식이라 스크립트가 없다)
+import ThemeSwitch from './ThemeSwitch.astro'
+
+const nav = [
+  { label: '시작하기', link: '/getting-started/' },
+  { label: '가이드', link: '/guides/add-endpoint/' },
+  { label: '레퍼런스', link: '/reference/' },
+  { label: '블로그', link: '/blog/spring-api-tests/' },
+]
+// 지금 페이지가 그 갈래 안이면 표시 (/guides/... → 가이드)
+const here = Astro.url.pathname.split('/')[1]
+---
+
+<header>
+  <div class="bar">
+    <a class="brand" href="/"><img src="/logo.svg" alt="" width="28" height="32" />iStack</a>
+    <nav aria-label="갈래">
+      {nav.map(({ label, link }) => <a class="section" href={link} aria-current={link.split('/')[1] === here ? 'true' : undefined}>{label}</a>)}
+      <button class="menu-button" type="button" popovertarget="site-menu" aria-label="메뉴">
+        <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"></path></svg>
+      </button>
+      <div class="site-menu" id="site-menu" popover>
+        {nav.map(({ label, link }) => <a href={link} aria-current={link.split('/')[1] === here ? 'true' : undefined}>{label}</a>)}
+      </div>
+      <ThemeSwitch />
+      <a class="github" href="https://github.com/initializer-stack/template" aria-label="GitHub">
+        <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"
+          ><path
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+          ></path></svg
+        >
+      </a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid var(--separator);
+    background: color-mix(in srgb, var(--background) 82%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: var(--width-page);
+    height: var(--header-height);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+  }
+  nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    font-size: var(--text-sm);
+  }
+  .section {
+    color: var(--secondary-label);
+  }
+  .section:hover,
+  .section[aria-current] {
+    color: var(--label);
+  }
+  .github {
+    color: var(--secondary-label);
+  }
+  .github:hover {
+    color: var(--label);
+  }
+  .menu-button {
+    display: none;
+    padding: var(--space-1);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--secondary-label);
+    cursor: pointer;
+  }
+  .menu-button:hover {
+    color: var(--label);
+  }
+  /* 머리글 아래 오른쪽에 붙는 갈래 목록 (문서 페이지의 페이지 메뉴와 같은 모양) */
+  .site-menu {
+    inset: calc(var(--header-height) - var(--space-1)) var(--space-4) auto auto;
+    margin: 0;
+    width: 200px;
+    padding: var(--space-1);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius);
+    color: var(--label);
+    background: var(--grouped-item);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.12);
+  }
+  .site-menu a {
+    display: block;
+    padding: var(--space-2) 10px;
+    border-radius: 8px;
+    font-size: var(--text-base);
+  }
+  .site-menu a:hover,
+  .site-menu a:focus-visible,
+  .site-menu a[aria-current] {
+    background: var(--secondary-background);
+  }
+  @media (max-width: 640px) {
+    .section {
+      display: none;
+    }
+    .menu-button {
+      display: flex;
+    }
+  }
+  /* 넓어지면 메뉴 버튼이 숨으니, 열려 있던 목록도 함께 숨긴다 */
+  @media (min-width: 641px) {
+    .site-menu {
+      display: none;
+    }
+  }
+</style>

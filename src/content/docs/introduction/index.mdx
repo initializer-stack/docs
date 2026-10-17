@@ -1,0 +1,61 @@
+---
+description: 서버 · 클라이언트를 contract/ 하나로 잇는 모노레포 템플릿의 구성과 공통 규칙입니다.
+---
+
+import RepositoryMap from '../../../components/RepositoryMap.astro'
+
+# iStack 소개
+
+**iStack**(Initializer Stack)은 여러 서버와 클라이언트를 함께 개발하는 모노레포 템플릿입니다. 서버와 클라이언트마다 언어와 프레임워크를 선택할 수 있습니다.
+API 문서 · 타입 · 공통 proto 는 `contract/` 에서 관리합니다.
+
+- 클라이언트 ↔ 서버: HTTP/JSON. 각 서버의 코드에서 OpenAPI 문서와 타입을 생성하고, 클라이언트는 생성된 타입으로 API 를 호출합니다.
+- 서버 ↔ 서버: gRPC. 모든 서버가 공통 proto 하나에서 코드를 만듭니다.
+
+HTTP 요청 · JSON · 기본적인 DB 사용과 한 가지 서버 언어를 익힌 개발자를 기준으로 설명합니다.
+서버 언어를 모두 알아야 시작할 수 있는 것은 아닙니다. 메모를 저장하면 notes 가 다른 서버를 부르고 web 은 templates 도 부르므로, 실행할 때는 서버 넷과 web 을 함께 띄웁니다.
+코드는 notes 서버와 web 앱부터 읽고, 같은 일을 다른 언어로 쓴 [같은 일, 네 언어](/reference/languages/)와 비교합니다.
+Docker 만 있으면 언어 도구를 설치하기 전에 [이미지로 먼저 둘러볼](/getting-started/first-run/#docker-만으로-둘러보기) 수 있습니다.
+
+## 학습 순서
+
+| 순서 | 해 볼 일 | 확인할 결과 |
+|---|---|---|
+| [처음 실행하기](/getting-started/first-run/) | 서버 넷과 web 을 실행합니다 | 메모에 태그가 붙고 새로 고침 뒤에도 남으며 테스트 · 타입 검사가 통과합니다 |
+| [엔드포인트 추가](/guides/add-endpoint/) | 메모 길이 API 를 더하고 앱에서 부릅니다 | 실제 요청 테스트가 통과하고 생성된 계약에 새 경로가 나옵니다 |
+| [계약을 깨뜨려 보기](/guides/contract-lab/) | HTTP 필드와 proto 번호를 바꿨다가 되돌립니다 | 타입 검사와 호환 검사가 각각 실패하고 복구 뒤 통과합니다 |
+| [외부 서비스 실패 테스트](/guides/external-service-lab/) | 요약 API 에 Fake 를 넣습니다 | 실제 서버가 성공 · 외부 실패 · 없는 메모를 구분합니다 |
+| [다른 서버 부르기](/guides/call-server/) | notes 가 tags · activity 를 부르는 흐름을 따라갑니다 | 다른 서버가 실패할 때의 응답(502 · 경고만)을 테스트로 확인합니다 |
+
+## 한눈에 보기
+
+<RepositoryMap />
+
+자세한 구조와 서버 레이어는 [레퍼런스 · 구조](/reference/architecture/)에 있습니다.
+
+## 공통 규칙
+
+| 무엇 | 어떻게 | 근거 |
+|---|---|---|
+| HTTP 계약 | 서버 코드가 기준, 문서는 서버마다 따로 | [ADR 0001](/reference/decisions/0001-code-first-http-contract/) |
+| 서버 간 통신 | gRPC, 공통 proto 하나 | [ADR 0002](/reference/decisions/0002-grpc-shared-proto/) |
+| 테스트 | 실제 서버 + Postgres, 외부만 Fake | [ADR 0003](/reference/decisions/0003-api-tests-with-fakes/) |
+| 서버 구조 | api → domain → storage · clients | [구조](/reference/architecture/) |
+| 도구 | 서버는 자기 언어 도구, 클라이언트는 공통 설정 · 카탈로그 | [구조 · 클라이언트](/reference/architecture/#클라이언트) |
+
+규칙마다 왜 그렇게 정했는지, 무엇을 내주고 무엇을 얻는지는 [구조는 왜 이렇게 됐나](/concepts/structure/)와 [테스트는 왜 이렇게 됐나](/concepts/testing/)에 있습니다.
+
+## 포함하지 않는 기능
+
+인증, 배포 대상, 운영 모니터링은 없습니다. 예시 서버는 이 컴퓨터(127.0.0.1)에서만 열리고, 이미지는 만들지만 어디에 올릴지는 정하지 않았습니다.
+밖에 열기 전에 인증과 TLS 를 붙입니다. 무엇을 정하고 어디에 붙일지는 [인증 붙이기](/guides/auth/)에 있습니다.
+
+## 예시 서버 활용
+
+예시 서버 넷은 맡은 일이 다릅니다. notes(Node)는 메모, tags(FastAPI)는 태그 규칙, activity(Spring)는 활동 기록, templates(Go)는 메모 템플릿을 맡습니다.
+메모를 저장하면 notes 가 tags 에 태그를 묻고 activity 에 기록을 남깁니다(둘 다 gRPC). templates 는 다른 서버를 부르지 않습니다.
+앱은 중간 서버 없이 필요한 서버를 바로 부릅니다(웹 앱은 자기 프록시에 서버마다 경로를 하나씩 둡니다).
+앱도 쓰는 사람과 자리에 따라 나눴습니다:
+web(React) · admin(Vue) · site(Next) · lite(순수 TS) · mobile(Expo) · desktop(Tauri).
+테이블은 서버마다 그 언어의 마이그레이션 도구(node-pg-migrate · Alembic · Flyway · goose)로 만듭니다.
+프로젝트에서는 필요한 서버와 앱을 남기고, 맡을 일에 맞게 [이름을 바꾼](/guides/add-server/#이름을-바꿀-때) 뒤 API 를 추가하거나 수정합니다.

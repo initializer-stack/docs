@@ -1,0 +1,1407 @@
+---
+// 랜딩 전체가 three.js 한 장면이다: 흩어진 조각(클라이언트 6 · 서버 3 · 계약 1)이 스크롤을 따라 하나의 스택으로 쌓이고(히어로),
+// 이어지는 장(slot 의 [data-chapter])마다 같은 스택이 그 장의 모습으로 바뀌고, 층 사이로 요청 · 응답을 뜻하는 연필 동그라미(알갱이)가 지나간다. 마지막 장은 펼친 구조
+// 움직임을 줄이는 설정이거나 WebGL 이 없으면 붙지 않는 보통 페이지와 로고 그림
+import LinkButton from './LinkButton.astro'
+---
+
+<section class="landing" data-landing>
+  <script is:inline>
+    // 그리기 전에: 움직임을 줄이는 설정이면 처음부터 보통 페이지로
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.currentScript.parentElement.classList.add('static')
+  </script>
+  <!-- 연필 떨림: 히어로의 밑줄 · 강조 · 버튼 테두리를 잡음으로 살짝 흔들고, 씨앗을 1 초에 8 번 바꿔 떨게 한다 (--rough 로 넘긴다) -->
+  <svg class="sketch-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="landing-rough" x="-5%" y="-20%" width="110%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="1">
+        <animate attributeName="seed" values="1;2;3" dur="0.375s" calcMode="discrete" repeatCount="indefinite" />
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" scale="3" />
+    </filter>
+  </svg>
+  <div class="stage" aria-hidden="true">
+    <canvas></canvas>
+    <span class="frame fig" data-fig></span>
+    <span class="frame beat" data-beat></span>
+    <svg class="leaders" data-leaders></svg>
+    <span class="label" data-hero="clients" style="--c: var(--layer-clients)">클라이언트</span>
+    <span class="label" data-hero="contract" style="--c: var(--layer-contract)">계약</span>
+    <span class="label" data-hero="servers" style="--c: var(--layer-servers)">서버</span>
+    <span class="label" data-part="clients" style="--c: var(--layer-clients)">클라이언트</span>
+    <span class="label" data-part="contract" style="--c: var(--layer-contract)">계약</span>
+    <span class="label" data-part="servers" style="--c: var(--layer-servers)">서버</span>
+    <span class="label" data-part="docker" style="--c: var(--secondary-label)">인프라</span>
+  </div>
+  <div class="flow">
+    <div class="hero">
+      <div class="copy">
+        <h1>
+          <span class="title">iStack<svg class="scribble" viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true"
+              ><path pathLength="1" d="M6 15C60 7 122 19 182 11S268 8 294 13" /><path pathLength="1" d="M18 19C84 12 166 22 286 15" /></svg
+            ></span>
+        </h1>
+        <p class="lead">여러 언어의 서버 · 클라이언트를<br /><span class="mark">계약 하나로</span> 잇는 모노레포 템플릿</p>
+        <div class="actions">
+          <LinkButton href="/getting-started/">시작하기</LinkButton>
+          <LinkButton href="https://github.com/initializer-stack/template" variant="secondary">GitHub</LinkButton>
+        </div>
+        <p class="stack"><span>서버 <b>언어 · 프레임워크는 서버마다</b></span> <span>앱 <b>웹 · 모바일 · 데스크톱</b></span></p>
+        <code class="gen">$ pnpm gen<span>  # 서버 코드에서 API 문서와 앱 타입을 만든다</span></code>
+      </div>
+      <img class="fallback" src="/favicon.svg" alt="" width="320" height="320" />
+    </div>
+    <div class="chapters"><slot /></div>
+  </div>
+</section>
+
+<style>
+  /* 본문은 문서와 같은 글꼴, 종이 위에서 읽히게 진한 글자(--body-ink, 명암비 4.5:1 이상) */
+  .landing {
+    --rough: url(#landing-rough);
+    --body-ink: color-mix(in srgb, var(--label) 74%, transparent);
+    position: relative;
+  }
+  /* 손글씨(--font-sketch)는 제목 · 주석 · 그림에만: 제목 · 한 줄 소개 · 버튼 · 그림 이름 · 장면 이름표 · 장 제목 · 목록 이름 · 흐름 칸.
+     이 손글씨는 한글 자간이 넓어 조금 좁힌다 */
+  h1,
+  .lead,
+  .actions :global(a),
+  .frame,
+  .label,
+  .chapters :global([data-chapter] h2),
+  .chapters :global(li strong),
+  .chapters :global([data-chapter] .steps) {
+    font-family: var(--font-sketch);
+    letter-spacing: -0.02em;
+  }
+  .sketch-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+  /* 랜딩은 스케치 종이 위: 페이지 바탕(머리글 포함)을 종이 색으로 바꾼다. 장면은 이 색을 읽어 칠한다 */
+  :global(body:has([data-landing])) {
+    --background: var(--paper);
+  }
+  /* 장면은 랜딩이 끝날 때까지 머리글 아래에 붙어 있고, 글(flow)이 그 위로 지나간다 */
+  .stage {
+    position: sticky;
+    top: var(--header-height);
+    height: calc(100svh - var(--header-height));
+    overflow: hidden;
+    pointer-events: none;
+    /* 종이 결: 아주 옅은 잡음 */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.35 0 0 0 0 0.25 0 0 0 0.1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  /* 장이 시작되면 도면처럼: 모눈이 깔리고, 모서리에 그림 이름 · 쪽수. --frame(0..1)은 스크립트가 채운다 */
+  .stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(var(--paper-grid) 1px, transparent 1px), linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: center;
+    mask-image: radial-gradient(ellipse 50% 70% at var(--gx, 73%) var(--gy, 50%), #000 30%, transparent 100%);
+    opacity: calc(var(--frame, 0) * 0.7);
+  }
+  .frame {
+    position: absolute;
+    font-size: var(--text-base);
+    letter-spacing: 0.06em;
+    color: var(--secondary-label);
+    opacity: var(--frame, 0);
+  }
+  .fig {
+    top: var(--space-6);
+    left: max(var(--space-6), calc((100% - var(--width-page)) / 2 + var(--space-6)));
+  }
+  /* 쪽수는 그림 이름과 같은 줄 오른쪽 (아래에 두면 오른쪽 글과 겹친다) */
+  .beat {
+    top: var(--space-6);
+    right: max(var(--space-6), calc((100% - var(--width-page)) / 2 + var(--space-6)));
+  }
+  .flow {
+    position: relative;
+    margin-top: calc(var(--header-height) - 100svh);
+  }
+  /* 스크롤 길이 = 쌓이는 동안 글이 붙어 있는 길이 */
+  .hero {
+    height: 250vh;
+  }
+  .copy {
+    position: sticky;
+    top: var(--header-height);
+    max-width: 880px;
+    margin: 0 auto;
+    padding: clamp(var(--space-8), 8vh, var(--space-24)) var(--space-6) 0;
+    text-align: center;
+  }
+  /* 손글씨는 글자가 작아 보여 크기를 조금 키운다 */
+  h1 {
+    margin: 0;
+    font-size: clamp(3.25rem, 9.5vw, 6.5rem);
+    font-weight: 700;
+    line-height: 1;
+  }
+  /* 제목 밑의 손으로 그은 두 줄 (계약 색). 처음 열 때 왼쪽에서 오른쪽으로 그려진다 */
+  .title {
+    position: relative;
+    display: inline-block;
+  }
+  .scribble {
+    position: absolute;
+    left: -3%;
+    bottom: -0.16em;
+    width: 106%;
+    height: 0.26em;
+    overflow: visible;
+    fill: none;
+    stroke: var(--layer-contract);
+    stroke-linecap: round;
+    filter: var(--rough);
+  }
+  .scribble path {
+    stroke-width: 4;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 1;
+    animation: draw-on 900ms cubic-bezier(0.6, 0, 0.3, 1) 250ms both;
+  }
+  .scribble path + path {
+    stroke-width: 2;
+    opacity: 0.6;
+    animation-delay: 650ms;
+  }
+  @keyframes draw-on {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .lead {
+    margin: var(--space-6) 0 var(--space-6);
+    font-size: clamp(1.5rem, 2.9vw, 1.875rem);
+    line-height: 1.35;
+    letter-spacing: -0.04em; /* 이 손글씨는 한글 자간이 넓다 */
+    color: var(--secondary-label);
+  }
+  /* "계약 하나로": 연필 빗금 형광펜 */
+  .mark {
+    position: relative;
+    z-index: 0;
+    color: var(--label);
+  }
+  .mark::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 48% -0.15em 2% -0.1em;
+    background: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--layer-contract) 55%, transparent) 0 1.6px, transparent 1.6px 5px);
+    filter: var(--rough);
+  }
+  .actions :global(a) {
+    font-size: 1.375rem;
+  }
+  /* 도입 판단용: 무엇을 잇는지 한 줄과 생성 명령 하나 (본문 글꼴 · 진한 글자). 특정 프레임워크 이름은 쓰지 않는다 */
+  .stack {
+    margin: var(--space-6) 0 var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--body-ink);
+  }
+  /* 이름표와 값이 한 덩어리로 줄바꿈된다 (낱말 가운데서 끊기지 않게) */
+  .stack > span {
+    display: inline-block;
+    margin: 0 var(--space-2);
+    white-space: nowrap;
+  }
+  .stack b {
+    margin-left: var(--space-1);
+    font-weight: 600;
+    color: var(--label);
+  }
+  .gen {
+    display: inline-block;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--label) 6%, transparent);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    word-break: keep-all;
+    white-space: pre-wrap;
+  }
+  .gen span {
+    color: var(--body-ink);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+  }
+  .label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--c);
+    white-space: nowrap;
+    opacity: 0;
+  }
+  /* 이름표와 층을 잇는 돼지꼬리 선: 층 쪽 점에서 이름표 쪽으로 그려진다 (stroke-dashoffset) */
+  .leaders {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .leaders :global(g) {
+    color: var(--c);
+    filter: var(--rough);
+  }
+  .leaders :global(path) {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+  }
+  .leaders :global(circle) {
+    fill: currentColor;
+  }
+  .fallback {
+    display: none;
+  }
+
+  /* 장: 넓은 화면은 왼쪽 글 · 오른쪽 장면, 좁은 화면은 위 장면 · 아래 글. --in 은 스크립트가 들어오는 정도(0..1)로 채운다 */
+  .chapters {
+    max-width: var(--width-page);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+  }
+  .chapters :global([data-chapter]) {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: min(500px, 44%);
+    min-height: 76svh;
+    opacity: var(--in, 1);
+    translate: 0 calc((1 - var(--in, 1)) * 32px);
+  }
+  .chapters :global([data-chapter]) {
+    word-break: keep-all;
+  }
+  .chapters :global([data-chapter] h2) {
+    margin: 0 0 var(--space-4);
+    text-wrap: balance;
+    font-size: clamp(2rem, 3.6vw, 3.25rem);
+    line-height: 1.1;
+    letter-spacing: -0.035em;
+  }
+  .chapters :global([data-chapter] p) {
+    margin: 0;
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    text-wrap: pretty;
+    color: var(--body-ink);
+  }
+  .chapters :global([data-chapter] code) {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--label);
+  }
+  /* 구조 목록: 줄마다 --row 로 하나씩 나타난다 */
+  .chapters :global(ul) {
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .chapters :global(li) {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: var(--space-3) 0;
+    opacity: var(--row, 1);
+    translate: 0 calc((1 - var(--row, 1)) * 12px);
+  }
+  .chapters :global(li + li) {
+    border-top: 1px solid var(--separator);
+  }
+  /* 구조 목록: 손글씨는 작아 보여 본문만큼 키운다 */
+  .chapters :global(li strong) {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .chapters :global(li span) {
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    color: var(--body-ink);
+  }
+  /* 계약이 만들어지는 순서: 코드 조각을 화살표로 잇고, 좁으면 줄을 바꾼다 */
+  .chapters :global([data-chapter] .steps) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-6);
+    font-size: var(--text-base);
+  }
+  .chapters :global([data-chapter] .steps span:not([aria-hidden])) {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--label) 6%, transparent);
+  }
+  /* 예시 코드: 좁은 화면에서도 가로로 넘치지 않게 줄을 바꾼다. .bad = 문제가 드러나는 줄 */
+  .chapters :global([data-chapter] pre) {
+    margin: var(--space-6) 0 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--label) 5%, transparent);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .chapters :global([data-chapter] pre code) {
+    font-size: inherit;
+  }
+  .chapters :global([data-chapter] .bad) {
+    color: var(--orange);
+  }
+  .chapters :global(.more) {
+    align-self: flex-start;
+    margin-top: var(--space-6);
+    font-size: var(--text-base);
+    color: var(--accent);
+    text-decoration: none;
+  }
+  /* 넓은 화면은 장마다 글 자리를 바꾼다: 기본 왼쪽, right = 오른쪽, center = 장면 아래 가운데. 장면은 poses 의 place 로 비킨다 */
+  @media (min-width: 900px) {
+    .landing:not(.static) .chapters :global([data-chapter][data-layout='right']) {
+      margin-left: auto;
+    }
+    .landing:not(.static) .chapters :global([data-chapter][data-layout='center']) {
+      justify-content: flex-end;
+      align-items: center;
+      max-width: 680px;
+      margin-inline: auto;
+      padding-bottom: 6vh;
+      text-align: center;
+    }
+    .landing:not(.static) .chapters :global([data-chapter][data-layout='center'] .more) {
+      align-self: center;
+    }
+  }
+  /* 마지막 장 뒤로 펼친 모습을 볼 여유 */
+  .chapters :global([data-chapter]:last-child) {
+    min-height: calc(100svh - var(--header-height) + 20vh);
+  }
+
+  @media (max-width: 899px) {
+    .stage::before {
+      mask-image: radial-gradient(ellipse 70% 30% at 50% 25%, #000 30%, transparent 100%);
+    }
+    .chapters :global(li) {
+      grid-template-columns: 84px minmax(0, 1fr);
+      gap: var(--space-3);
+      padding: var(--space-2) 0;
+    }
+    .chapters :global(li strong) {
+      font-size: 1.125rem;
+    }
+    .chapters :global(li span) {
+      font-size: var(--text-base);
+    }
+    .chapters :global(.more) {
+      font-size: var(--text-base);
+    }
+    .chapters :global([data-chapter]) {
+      justify-content: flex-end;
+      max-width: none;
+      min-height: 52svh;
+      padding-bottom: 6svh;
+    }
+    .chapters :global([data-chapter] h2) {
+      font-size: clamp(1.75rem, 8vw, 2.25rem);
+    }
+    .chapters :global([data-chapter] p) {
+      font-size: var(--text-base);
+    }
+    /* 장의 글이 장면 아래 남은 자리(화면 절반쯤)에 들어오게: 흐름 줄은 빼고 예시 코드 · 간격을 줄인다 */
+    .chapters :global([data-chapter] .steps) {
+      display: none;
+    }
+    .chapters :global([data-chapter] pre) {
+      margin-top: var(--space-4);
+      font-size: var(--text-xs);
+      line-height: 1.5;
+    }
+    .chapters :global(.more),
+    .chapters :global(ul) {
+      margin-top: var(--space-4);
+    }
+    .chapters :global([data-chapter]:last-child) {
+      min-height: 60svh;
+      padding-bottom: 2svh;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scribble path {
+      animation: none;
+    }
+  }
+  /* 움직임 없음 · WebGL 없음: 붙지 않는 보통 페이지 */
+  .static .stage {
+    display: none;
+  }
+  .static .flow {
+    margin-top: 0;
+  }
+  .static .hero {
+    height: auto;
+  }
+  .static .copy {
+    position: relative;
+    top: 0;
+  }
+  .static .fallback {
+    display: block;
+    width: 220px;
+    height: auto;
+    margin: var(--space-12) auto 0;
+  }
+  .static .chapters :global([data-chapter]),
+  .static .chapters :global([data-chapter]:last-child) {
+    justify-content: flex-start;
+    max-width: var(--width-prose);
+    min-height: 0;
+    padding: var(--space-16) 0 0;
+  }
+  .static .chapters {
+    padding-bottom: var(--space-24);
+  }
+</style>
+
+<script>
+  import * as THREE from 'three'
+  import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+  import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
+  import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
+  import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
+
+  const root = document.querySelector<HTMLElement>('[data-landing]')!
+  const stage = root.querySelector<HTMLElement>('.stage')!
+  const canvas = root.querySelector('canvas')!
+  const hero = root.querySelector<HTMLElement>('.hero')!
+  const copy = root.querySelector<HTMLElement>('.copy')!
+  const chapters = [...root.querySelectorAll<HTMLElement>('[data-chapter]')]
+  const fig = root.querySelector<HTMLElement>('[data-fig]')!
+  const beat = root.querySelector<HTMLElement>('[data-beat]')!
+  let shownFig = 0
+  const rows = [...root.querySelectorAll<HTMLElement>('[data-chapter] li')]
+
+  const S = 3 // 판 한 변 (월드 단위)
+  const GAP = 0.08
+  const THICK = 0.3
+  const BASE = S * 1.16 // 인프라 바닥판 한 변
+  const FOV = 30
+  const AZIMUTH_START = THREE.MathUtils.degToRad(-16)
+  // 다 쌓인 스택이 화면에서 차지하는 크기 (월드 단위, 투영 후 대략)
+  const STACK_W = 4.6
+  const STACK_H = 4.2
+
+  // 층 높이. 층 색(연필 색)은 tokens.css 의 --layer-* 를 이름표의 계산된 색으로 읽는다 (paint)
+  const layers = {
+    clients: { y: 0.95 },
+    contract: { y: 0 },
+    servers: { y: -0.95 },
+    docker: { y: -1.52 },
+  } as const
+  const CONTRACT_THICK = 0.18
+  type Layer = keyof typeof layers
+  const order: Layer[] = ['clients', 'contract', 'servers', 'docker']
+
+  // 장마다의 모습. 0 = 히어로 끝(다 쌓임), 1.. = 장 순서. 스크롤로 정한 story(0..장 수) 의 이웃한 두 모습을 섞는다
+  // lift: 층마다 위아래로 옮김 (clients · contract · servers · docker), dim: 흐리게 (clients · contract · servers)
+  // glow: 계약 강조(테두리가 진해지고 소켓에 동그라미), flip: 서버 조각을 긴 축으로 돌림(0.5 = 세움, 1 = 반 바퀴 돌아 다시 누움), base: 바닥판 들어옴(0..1), 카메라: 방위 · 높이(도) · 거리 배수
+  // skew: 클라이언트 · 서버 조각이 제자리에서 어긋남 (0..1, 없으면 0)
+  // place: 넓은 화면에서 스택 가운데의 자리 (화면 가로 · 세로 비율, 없으면 [0.73, 0.5] = 오른쪽). 글이 오른쪽 · 아래인 장은 비켜 선다
+  // wire: 도면처럼 선만 (0..1). 빗금을 걷고 칠을 옅게 해 연필 테두리만 남긴다
+  // packets: 알갱이 무리마다의 세기 (계약 없음 · 왕복 · 서버 코드에서 앱으로 · 서버끼리, 없으면 모두 0)
+  interface Pose {
+    lift: number[]
+    dim: number[]
+    glow: number
+    flip: number
+    base: number
+    azimuth: number
+    elevation: number
+    zoom: number
+    skew?: number
+    packets?: number[]
+    wire?: number
+    place?: number[]
+  }
+  const poses: Pose[] = [
+    { lift: [0, 0, 0, 0], dim: [0, 0, 0], glow: 0, flip: 0, base: 0, azimuth: 0, elevation: 30, zoom: 1 },
+    // 계약이 없으면: 클라이언트 · 서버가 벌어져 조각마다 어긋나고, 그 사이는 빈 회색 판
+    { lift: [0.55, 0, -0.55, 0], dim: [0, 1, 0], glow: 0, flip: 0, base: 0, azimuth: -10, elevation: 24, zoom: 1.1, skew: 1, packets: [1, 0, 0, 0] },
+    // 계약으로만 이어진다: 계약이 떠올라 소켓마다 동그라미가 쳐지고, 어긋났던 조각이 소켓 위에 맞춰진다
+    { lift: [0.42, 0.18, -0.42, 0], dim: [0.8, 0, 0.8], glow: 1, flip: 0, base: 0, azimuth: -8, elevation: 26, zoom: 1.45, packets: [0, 1, 0, 0], place: [0.5, 0.34] },
+    // HTTP: 서버가 계약에 붙어 계약을 만들고, 클라이언트는 위에서 받는다
+    { lift: [0.6, 0.1, -0.2, 0], dim: [0.6, 0, 0], glow: 0.6, flip: 0, base: 0, azimuth: 4, elevation: 28, zoom: 1.08, packets: [0, 0, 1, 0], place: [0.27, 0.5] },
+    // gRPC: 서버 조각이 세워져 같은 proto 를 보고 나란히 선다
+    { lift: [0.5, 0, -0.42, 0], dim: [0.8, 0.3, 0], glow: 0.3, flip: 0.5, base: 0, azimuth: 12, elevation: 30, zoom: 1.08, packets: [0, 0, 0, 1] },
+    // 테스트: 바닥판(docker)이 들어오고 스택이 그 위에 앉는다. 테스트도 클라이언트처럼 계약을 지나 왕복한다
+    { lift: [0, 0, 0, 0], dim: [0, 0, 0], glow: 0, flip: 1, base: 1, azimuth: -6, elevation: 30, zoom: 1.62, packets: [0, 1, 0, 0], place: [0.5, 0.33] },
+    // PR 하나로 바뀌고 어긋나면 막힌다: 스캔 면이 위에서 아래로 훑는다 (모습은 그대로, 스캔은 장의 진행으로)
+    { lift: [0, 0, 0, 0], dim: [0, 0, 0], glow: 0, flip: 1, base: 1, azimuth: 4, elevation: 30, zoom: 1.12, place: [0.27, 0.5] },
+    // 비용: 다 쌓인 스택을 조금 위에서 내려다본다 (글은 아래 가운데)
+    { lift: [0, 0, 0, 0], dim: [0, 0, 0], glow: 0, flip: 1, base: 1, azimuth: -14, elevation: 36, zoom: 1.62, wire: 1, place: [0.5, 0.33] },
+    // 구조: 층을 펼친다
+    { lift: [1.3, 0.44, -0.44, -1.15], dim: [0, 0, 0], glow: 0, flip: 1, base: 1, azimuth: 0, elevation: 18, zoom: 1.42, wire: 1 },
+  ]
+  const SCAN = 6 // 스캔하는 장 (poses 순서)
+
+  // 계약이 없는 장의 어긋난 자리 (조각 순서 = 클라이언트 6 · 서버 3): 높이 · 긴 축으로 밀림 · 기울기 둘.
+  // 옆 조각과 틈이 좁아 가로로는 밀지 않고, 긴 축으로 미는 것은 한 줄짜리 서버만
+  const skewed: [number, number, number, number][] = [
+    [0.14, 0, 0.1, -0.06],
+    [-0.08, 0, -0.08, 0.05],
+    [0.06, 0, 0.05, 0.09],
+    [-0.12, 0, 0.09, 0.04],
+    [0.16, 0, -0.06, -0.08],
+    [-0.04, 0, -0.1, 0.06],
+    [0.1, -0.4, 0.06, 0.05],
+    [-0.12, 0.32, -0.05, -0.05],
+    [0.05, -0.18, 0.04, 0.06],
+  ]
+
+  // 흩어진 자리: 화면 가로 · 세로(-1..1, 위가 +), 깊이(+ 면 멀리), 시작 회전. 글자가 있는 가운데 위는 비운다
+  const scatter: [number, number, number, number, number, number][] = [
+    [-0.82, 0.5, 1.5, 0.9, 0.4, -0.5],
+    [0.8, 0.58, 3, -0.6, 1.1, 0.4],
+    [-0.6, -0.2, -1.5, 0.3, -0.8, 0.9],
+    [0.86, -0.12, 0.5, -1.1, 0.5, -0.3],
+    [-0.9, -0.72, 2.5, 0.7, 1.4, 0.2],
+    [0.5, -0.8, -1, -0.4, -1.2, -0.7],
+    [0.1, -0.92, 4, 1.2, 0.2, 0.6],
+    [-0.98, 0.08, 3.5, -0.5, 0.9, -1.1],
+    [0.66, 0.24, -2, 0.8, -0.6, 0.3],
+    [-1.5, -0.35, 0, 0.15, 0.5, -0.1],
+  ]
+
+  interface Piece {
+    mesh: THREE.Mesh
+    layer: Layer
+    to: THREE.Vector3
+    from: THREE.Vector3
+    fromQ: THREE.Quaternion
+    start: number
+    duration: number
+  }
+
+  const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4)
+  const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+  const lerp = THREE.MathUtils.lerp
+  const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
+  const smoothstep = (a: number, b: number, v: number) => {
+    const t = clamp01((v - a) / (b - a))
+    return t * t * (3 - 2 * t)
+  }
+
+  function webgl() {
+    try {
+      return new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+    } catch {
+      return null
+    }
+  }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) root.querySelector<SVGSVGElement>('.sketch-defs')!.pauseAnimations()
+  if (!root.classList.contains('static')) {
+    const made = webgl()
+    if (made) start(made)
+    else root.classList.add('static')
+  }
+
+  function start(renderer: THREE.WebGLRenderer) {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setClearColor(0x000000, 0)
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 200)
+
+    // 스케치 재질: 종이 바탕에 층 색을 옅게 칠하고(wash), 빛을 덜 받는 면일수록 연필 빗금을 겹친다 (한 방향 → 교차 → 촘촘히)
+    // 빗금은 화면 좌표라 조각이 움직여도 종이에 그은 선처럼 제자리에 있다. 조명은 셰이더 안의 고정된 빛 하나
+    const sketchVertex = /* glsl */ `
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`
+    const sketchFragment = /* glsl */ `
+      uniform vec3 paper;
+      uniform vec3 ink;
+      uniform float wash;
+      uniform float hatch;
+      uniform float opacity;
+      uniform float pixelRatio;
+      varying vec3 vNormal;
+      // 빗금 한 벌: 각도 · 간격 · 굵기(px). 선이 조금씩 출렁이고 누르는 힘(진하기)이 고르지 않다
+      float strokes(vec2 p, float angle, float gap, float width) {
+        vec2 d = vec2(cos(angle), sin(angle));
+        float along = dot(p, vec2(-d.y, d.x));
+        float across = dot(p, d) / gap + 0.18 * sin(along * 0.045);
+        float dist = abs(fract(across) - 0.5) * gap;
+        float pressure = 0.65 + 0.35 * sin(along * 0.09 + floor(across) * 1.7);
+        return (1.0 - smoothstep(width * 0.5, width * 0.5 + 0.9, dist)) * pressure;
+      }
+      void main() {
+        float light = dot(normalize(vNormal), normalize(vec3(-0.45, 0.8, 0.4))) * 0.5 + 0.5;
+        vec2 p = gl_FragCoord.xy / pixelRatio;
+        float h = strokes(p, 0.8, 6.0, 1.0) * smoothstep(0.82, 0.72, light);
+        h = max(h, strokes(p, -0.8, 6.0, 1.0) * smoothstep(0.6, 0.5, light));
+        h = max(h, strokes(p, 0.1, 4.0, 0.9) * smoothstep(0.38, 0.28, light));
+        gl_FragColor = vec4(mix(mix(paper, ink, wash), ink, h * hatch * 0.85), opacity);
+        #include <colorspace_fragment>
+      }`
+    const paper = new THREE.Color() // 종이 색 = 페이지 바탕 (paint)
+    const inks = {} as Record<Layer, THREE.Color>
+    let washBase = 0.24 // 칠의 진하기. 다크는 밝은 연필 색이 먹색 종이 위에서 진하게 보여 더 옅게 (paint)
+    const materials = {} as Record<Layer, THREE.ShaderMaterial>
+    for (const name of order) {
+      inks[name] = new THREE.Color()
+      materials[name] = new THREE.ShaderMaterial({
+        uniforms: {
+          paper: { value: paper },
+          ink: { value: inks[name] },
+          wash: { value: 0.24 },
+          hatch: { value: 1 },
+          opacity: { value: 1 },
+          pixelRatio: { value: 1 },
+        },
+        vertexShader: sketchVertex,
+        fragmentShader: sketchFragment,
+        transparent: name === 'docker' || name === 'contract', // 바닥판은 아래에서 올라오며 나타나고, 계약은 없는 장에서 사라진다
+      })
+    }
+
+    // 조각: 클라이언트 3×2, 서버 3×1, 계약 한 장. 들어오는 순서는 클라이언트 → 서버 → 계약 (계약이 마지막에 둘 사이로)
+    const pieces: Piece[] = []
+    // 연필 선: 상자 모서리 12 개를 두 번씩, 끝을 조금 넘기고 가운데를 살짝 꺾어 긋는다
+    // 흔들린 모양을 BOIL 벌 미리 만들어 1 초에 8 번 바꿔 낀다 (손그림 애니메이션의 선 떨림)
+    const BOIL = 3
+    const edgeMaterials = Object.fromEntries(order.map((name) => [name, new LineMaterial({ linewidth: 1.4, transparent: true })])) as Record<Layer, LineMaterial>
+    const strokes: { line: LineSegments2; variants: LineSegmentsGeometry[] }[] = []
+    let seed = 7
+    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647 // 고정된 난수: 새로 고쳐도 같은 그림
+    const a = new THREE.Vector3()
+    const b = new THREE.Vector3()
+    const mid = new THREE.Vector3()
+    const along = new THREE.Vector3()
+    const shake = (v: THREE.Vector3, size: number) => v.set(v.x + (random() - 0.5) * size, v.y + (random() - 0.5) * size, v.z + (random() - 0.5) * size)
+    // segments: 선분 끝점 쌍 (x y z x y z ...). 점선 재질이면 모양마다 점선 길이를 잰다
+    const sketchLines = (parent: THREE.Object3D, segments: ArrayLike<number>, material: LineMaterial) => {
+      const corners = segments
+      const variants = Array.from({ length: BOIL }, () => {
+        const points: number[] = []
+        for (let e = 0; e < corners.length; e += 6)
+          for (let pass = 0; pass < 2; pass++) {
+            a.fromArray(corners, e)
+            b.fromArray(corners, e + 3)
+            along.subVectors(b, a).normalize()
+            shake(a.addScaledVector(along, -(0.01 + random() * 0.04)), 0.02)
+            shake(b.addScaledVector(along, 0.01 + random() * 0.04), 0.02)
+            shake(mid.lerpVectors(a, b, 0.35 + random() * 0.3), 0.018)
+            points.push(a.x, a.y, a.z, mid.x, mid.y, mid.z, mid.x, mid.y, mid.z, b.x, b.y, b.z)
+          }
+        return new LineSegmentsGeometry().setPositions(points)
+      })
+      const line = new LineSegments2(variants[0], material)
+      if (material.dashed)
+        for (const v of variants) {
+          line.geometry = v
+          line.computeLineDistances()
+        }
+      line.geometry = variants[0]
+      parent.add(line)
+      strokes.push({ line, variants })
+    }
+    const boxEdges = (w: number, h: number, d: number) => new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)).getAttribute('position').array
+    const sketchTexture = (paint: (g: CanvasRenderingContext2D) => void) => {
+      const c = document.createElement('canvas')
+      c.width = c.height = 128
+      const g = c.getContext('2d')!
+      g.strokeStyle = '#fff'
+      g.lineCap = g.lineJoin = 'round'
+      paint(g)
+      const texture = new THREE.CanvasTexture(c)
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy() // 판에 눕힌 소켓도 비스듬히 봐서 번지지 않게
+      return texture
+    }
+    // 두 번 겹쳐 그은, 끝이 조금 넘치는 동그라미 (128px 그림 가운데)
+    const ring = (g: CanvasRenderingContext2D, r: number, width: number) => {
+      g.lineWidth = width
+      for (let pass = 0; pass < 2; pass++) {
+        const start = random() * Math.PI * 2
+        const wobble = random() * Math.PI * 2
+        g.beginPath()
+        for (let k = 0; k <= 48; k++) {
+          const t = start + (Math.PI * 2.15 * k) / 48
+          const rr = r * (1 + 0.07 * Math.sin(t * 3 + wobble)) + pass * 2
+          g[k ? 'lineTo' : 'moveTo'](64 + Math.cos(t) * rr, 64 + Math.sin(t) * rr)
+        }
+        g.stroke()
+      }
+    }
+    const add = (layer: Layer, x: number, z: number, w: number, d: number, h: number, start: number, duration: number) => {
+      const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(0.07, h / 2.5)), materials[layer])
+      sketchLines(mesh, boxEdges(w, h, d), edgeMaterials[layer])
+      const to = new THREE.Vector3(x, layers[layer].y, z).applyQuaternion(yaw)
+      const [, , , rx, ry, rz] = scatter[pieces.length]
+      const fromQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz))
+      pieces.push({ mesh, layer, to, from: new THREE.Vector3(), fromQ, start, duration })
+      scene.add(mesh)
+    }
+    for (let row = 0; row < 2; row++)
+      for (let col = 0; col < 3; col++)
+        add('clients', (col - 1) * (S / 3), (row - 0.5) * (S / 2), S / 3 - GAP, S / 2 - GAP, THICK, (row * 3 + col) * 0.04, 0.5)
+    for (let col = 0; col < 3; col++) add('servers', (col - 1) * (S / 3), 0, S / 3 - GAP, S - GAP, THICK, 0.1 + col * 0.05, 0.5)
+    add('contract', 0, 0, S, S, CONTRACT_THICK, 0.4, 0.45)
+
+    // 계약 판의 무늬 (판과 함께 움직인다): 둘레의 가는 선 두 줄, 위 클라이언트 · 아래 서버 조각이 닿는 자리의 소켓과
+    // 그 둘을 잇는 세로 선, 칸 나눔 선
+    const contractMesh = pieces[pieces.length - 1].mesh
+    const gridMaterial = new LineMaterial({ linewidth: 1, transparent: true }) // 칸 나눔: 테두리보다 가늘고 흐리게
+    const missing = new LineMaterial({ linewidth: 1.4, transparent: true, dashed: true, dashSize: 0.14, gapSize: 0.1 }) // 계약이 없는 장: 판 대신 빈자리를 점선으로
+    // 소켓: 연필 동그라미 안에 빗금 친 점. 둘레의 큰 동그라미는 강조(동그라미 치기): 계약 장 · 알갱이가 지날 때 그 소켓에
+    const socketTextures = Array.from({ length: BOIL }, () =>
+      sketchTexture((g) => {
+        ring(g, 40, 7)
+        g.save()
+        g.beginPath()
+        g.arc(64, 64, 17, 0, Math.PI * 2)
+        g.clip()
+        g.lineWidth = 5
+        for (let x = -128; x < 128; x += 9) {
+          g.beginPath()
+          g.moveTo(x, 128)
+          g.lineTo(x + 128, 0)
+          g.stroke()
+        }
+        g.restore()
+      }),
+    )
+    const circleTextures = Array.from({ length: BOIL }, () => sketchTexture((g) => ring(g, 52, 4)))
+    const socket = new THREE.MeshBasicMaterial({ map: socketTextures[0], transparent: true, depthWrite: false })
+    const halo = new THREE.MeshBasicMaterial({ map: circleTextures[0], transparent: true, depthWrite: false })
+    const halos: THREE.MeshBasicMaterial[] = [] // 소켓마다 하나: 알갱이가 지날 때 그 소켓만 동그라미를 친다
+    const socketAt: [number, number][] = [] // 소켓 자리 (판 위 x · z). 알갱이 길도 여기를 지난다
+    {
+      const half = S / 2
+      const top = CONTRACT_THICK / 2 + 0.004
+      const inner = half - 0.07
+      // 칸: 클라이언트 3×2 자리
+      const grid: number[] = []
+      for (const x of [-S / 6, S / 6]) grid.push(x, top, -inner, x, top, inner)
+      grid.push(-inner, top, 0, inner, top, 0)
+      sketchLines(contractMesh, grid, gridMaterial)
+      // 빈자리 점선: 윗면 네 변
+      const corner = [-half, -half, half, -half, half, half, -half, half]
+      const rect: number[] = []
+      for (let i = 0; i < 4; i++) rect.push(corner[i * 2], top, corner[i * 2 + 1], corner[(i * 2 + 2) % 8], top, corner[(i * 2 + 3) % 8])
+      sketchLines(contractMesh, rect, missing)
+
+      // 소켓: 클라이언트 조각 6 개의 가운데 = 서버 조각 3 개 × 앞뒤 둘. 판 윗면에 눕혀 붙인다
+      const mark = new THREE.PlaneGeometry(0.32, 0.32)
+      const circle = new THREE.PlaneGeometry(0.5, 0.5)
+      for (let col = 0; col < 3; col++)
+        for (const z of [-S / 4, S / 4]) {
+          const x = (col - 1) * (S / 3)
+          const m = new THREE.Mesh(mark, socket)
+          m.position.set(x, top, z)
+          m.rotation.x = -Math.PI / 2
+          m.userData.socket = true
+          contractMesh.add(m)
+          const h = new THREE.Mesh(circle, halos[halos.push(halo.clone()) - 1])
+          h.position.set(x, top + 0.002, z)
+          h.rotation.x = -Math.PI / 2
+          contractMesh.add(h)
+          socketAt.push([x, z])
+        }
+    }
+    const sockets = contractMesh.children.filter((c) => c.userData.socket)
+    const rimHot = new THREE.Color()
+    const socketColor = new THREE.Color()
+    const socketHot = new THREE.Color()
+
+    // 인프라(docker) 바닥판: 무광 회색, 아래에서 올라온다
+    const base = new THREE.Mesh(new RoundedBoxGeometry(BASE, 0.22, BASE, 4, 0.08), materials.docker)
+    base.quaternion.copy(yaw)
+    scene.add(base)
+    sketchLines(base, boxEdges(BASE, 0.22, BASE), edgeMaterials.docker)
+
+    // 스캔 면: 반투명 면 + 얇게 빛나는 테두리
+    const scan = new THREE.Group()
+    const scanSize = S * 1.5
+    const scanFace = new THREE.MeshBasicMaterial({ color: '#28cbd8', transparent: true, depthWrite: false, side: THREE.DoubleSide })
+    const scanEdge = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide })
+    const outline = new THREE.Shape()
+    const half = scanSize / 2
+    outline.moveTo(-half, -half).lineTo(half, -half).lineTo(half, half).lineTo(-half, half).closePath()
+    const inner = new THREE.Path()
+    const edge = 0.04
+    inner.moveTo(-half + edge, -half + edge).lineTo(-half + edge, half - edge).lineTo(half - edge, half - edge).lineTo(half - edge, -half + edge).closePath()
+    outline.holes.push(inner)
+    scan.add(new THREE.Mesh(new THREE.PlaneGeometry(scanSize, scanSize), scanFace))
+    scan.add(new THREE.Mesh(new THREE.ShapeGeometry(outline), scanEdge))
+    scan.rotation.set(-Math.PI / 2, 0, Math.PI / 4)
+    scene.add(scan)
+
+    // 알갱이: 요청 · 응답 · 생성되는 타입이 층 사이를 지나는 모습. 무리 넷이 각자 한 장을 맡는다
+    // fail(계약 없음: 빈 판에 부딪혀 터짐) · trip(계약을 지나 왕복) · up(서버 코드 → 계약 → 앱) · grpc(서버끼리 계약을 거쳐)
+    // 조각에 가려지지 않게 맨 위에 그린다 (층 사이를 지나는 신호로 읽힌다)
+    // 연필 그림: 머리 = 빗금 친 동그라미, 꼬리 = 옅은 잔상 동그라미(손그림 애니메이션의 어니언 스킨), 부딪힘 = 사방으로 튀는 짧은 선
+    // 흰 선으로 그려 두고 재질 색(층 연필 색)을 곱한다. 연필 선처럼 BOIL 벌을 그려 1 초에 8 번 바꿔 낀다
+    const headTextures = Array.from({ length: BOIL }, () =>
+      sketchTexture((g) => {
+        ring(g, 38, 6)
+        g.save()
+        g.beginPath()
+        g.arc(64, 64, 34, 0, Math.PI * 2)
+        g.clip()
+        g.lineWidth = 4
+        for (let x = -128; x < 128; x += 11) {
+          const j = (random() - 0.5) * 4
+          g.beginPath()
+          g.moveTo(x + j, 128)
+          g.lineTo(x + 128 - j, 0)
+          g.stroke()
+        }
+        g.restore()
+      }),
+    )
+    const echoTextures = Array.from({ length: BOIL }, () => sketchTexture((g) => ring(g, 36, 4)))
+    const burstTextures = Array.from({ length: BOIL }, () =>
+      sketchTexture((g) => {
+        g.lineWidth = 6
+        for (let i = 0; i < 9; i++) {
+          const t = (i / 9) * Math.PI * 2 + (random() - 0.5) * 0.4
+          const from = 20 + random() * 8
+          const to = 46 + random() * 14
+          g.beginPath()
+          g.moveTo(64 + Math.cos(t) * from, 64 + Math.sin(t) * from)
+          g.lineTo(64 + Math.cos(t) * to, 64 + Math.sin(t) * to)
+          g.stroke()
+        }
+        ring(g, 12, 5)
+      }),
+    )
+    const TRAIL = 5 // 머리 1 + 잔상 4
+    const packet = () => {
+      const dots = Array.from({ length: TRAIL }, () => {
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: headTextures[0], transparent: true, depthTest: false, depthWrite: false }))
+        sprite.renderOrder = 10
+        sprite.visible = false
+        scene.add(sprite)
+        return sprite
+      })
+      return { dots }
+    }
+    type Packet = ReturnType<typeof packet>
+    // 서버끼리: 어느 서버 줄(0..2)에서 어느 줄로, 판 위 z
+    const routes: [number, number, number][] = [
+      [0, 1, -S / 4],
+      [1, 2, S / 4],
+      [2, 0, 0],
+      [1, 0, S / 4],
+    ]
+    const flows = {
+      fail: socketAt.map(packet),
+      trip: socketAt.map(packet),
+      up: socketAt.map(packet),
+      grpc: routes.map(packet),
+    }
+    const pulse = new Float32Array(socketAt.length)
+    const burst = new THREE.Color('#ff9500')
+    const tint = new THREE.Color()
+    const spot = new THREE.Vector3()
+    const near = (y: number, to: number) => Math.exp(-(((y - to) / 0.12) ** 2))
+    // 층 높이 (들어 올린 만큼, 매 프레임 render 가 채운다)
+    let clientBottom = 0
+    let contractY = 0
+    let serverTop = 0
+    let standingTop = 0 // 세운 서버의 윗변
+
+    let bursting = false // 길이 이번 자리를 부딪힘으로 그리라고 할 때
+    let fadeOut = 1 // 길이 정한 진하기 (부딪힘이 사라질 때)
+    // 길: 무리 안의 k 번째 알갱이가 진행 u(0..1)일 때 spot 에 스택 좌표, tint 에 색을 쓰고 크기(0..)를 돌려준다
+    type Path = (k: number, u: number) => number
+    const paths: Record<keyof typeof flows, Path> = {
+      // 계약 없음: 클라이언트에서 내려가다 빈 판에 부딪혀 주황으로 터진다
+      fail(k, u) {
+        const [x, z] = socketAt[k]
+        if (u < 0.7) {
+          spot.set(x, lerp(clientBottom, contractY + 0.12, (u / 0.7) ** 2), z)
+          tint.copy(inks.clients)
+          return 1
+        }
+        spot.set(x, contractY + 0.12, z)
+        tint.copy(burst)
+        bursting = true
+        fadeOut = 1 - (u - 0.7) / 0.3
+        return 1.5 + 0.8 * (1 - fadeOut) // 부딪힌 자리에서 튀어 퍼지며 옅어진다
+      },
+      // 왕복: 요청(보라)이 계약을 지나 서버로 내려가고 응답(호박)이 올라온다
+      trip(k, u) {
+        const [x, z] = socketAt[k]
+        spot.set(x, lerp(clientBottom, serverTop, smoothstep(0, 1, u < 0.5 ? u * 2 : 2 - u * 2)), z)
+        tint.copy(u < 0.5 ? inks.clients : inks.servers)
+        return 1
+      },
+      // 서버 코드 → 계약 → 앱 타입: 아래에서 위로, 지나는 층의 색으로 바뀐다
+      up(k, u) {
+        const [x, z] = socketAt[k]
+        const y = lerp(serverTop, clientBottom, u)
+        spot.set(x, y, z)
+        tint.copy(inks.servers).lerp(inks.contract, smoothstep(serverTop, contractY, y)).lerp(inks.clients, smoothstep(contractY, clientBottom, y))
+        return Math.sqrt(Math.sin(Math.PI * u))
+      },
+      // 서버끼리: 세운 서버의 윗변에서 계약 판에 닿는 호를 그리며 다른 서버로
+      grpc(k, u) {
+        const [from, to, z] = routes[k]
+        const apex = 2 * contractY - standingTop // 2차 곡선의 가운데가 계약 판에 닿는 조절점
+        spot.set(lerp((from - 1) * (S / 3), (to - 1) * (S / 3), u), (1 - u) ** 2 * standingTop + 2 * (1 - u) * u * apex + u ** 2 * standingTop, z)
+        tint.copy(inks.servers)
+        return Math.sqrt(Math.sin(Math.PI * u))
+      },
+    }
+    // 알갱이 하나를 그린다: 머리는 u, 꼬리는 조금씩 앞선 진행에서 작고 옅게. 머리의 높이를 돌려준다 (안 보이면 NaN)
+    function draw(p: Packet, path: Path, k: number, u: number, strength: number) {
+      for (let j = 0; j < TRAIL; j++) {
+        const dot = p.dots[j]
+        bursting = false
+        fadeOut = 1
+        const size = strength * path(k, (u - j * 0.03 + 1) % 1) * (1 - j * 0.08)
+        dot.visible = size > 0.01
+        if (!dot.visible) continue
+        dot.position.copy(spot.applyQuaternion(yaw))
+        dot.scale.setScalar(size * 0.32) // 동그라미 지름 ≈ 0.2 (그림의 62%)
+        dot.material.map = (bursting ? burstTextures : j ? echoTextures : headTextures)[shownBoil]
+        dot.material.color.copy(tint)
+        dot.material.opacity = fadeOut * (j && !bursting ? 0.55 * (1 - j / TRAIL) : 1)
+      }
+      return p.dots[0].visible ? p.dots[0].position.y : NaN
+    }
+
+    // 바닥 그림자: 연필 빗금을 가운데가 진하게 둥글게 남긴다
+    const shadowCanvas = document.createElement('canvas')
+    shadowCanvas.width = shadowCanvas.height = 256
+    const shadowMaterial = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, depthWrite: false })
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), shadowMaterial)
+    shadow.rotation.x = -Math.PI / 2
+    scene.add(shadow)
+    // 색 모드: <html data-theme> 로 고른 값이 먼저, 없으면 시스템 설정 (ThemeSwitch)
+    const system = matchMedia('(prefers-color-scheme: dark)')
+    const dark = { get matches() { return (document.documentElement.dataset.theme ?? (system.matches ? 'dark' : 'light')) === 'dark' } }
+    const paintShadow = () => {
+      const g = shadowCanvas.getContext('2d')!
+      g.clearRect(0, 0, 256, 256)
+      g.strokeStyle = dark.matches ? 'rgba(235,235,245,0.4)' : 'rgba(60,56,48,0.6)'
+      g.lineWidth = 1.3
+      for (let x = -256; x < 256; x += 6) {
+        g.beginPath()
+        g.moveTo(x, 256)
+        g.lineTo(x + 256, 0)
+        g.stroke()
+      }
+      g.globalCompositeOperation = 'destination-in'
+      const gradient = g.createRadialGradient(128, 128, 0, 128, 128, 128)
+      gradient.addColorStop(0, 'rgba(0,0,0,0.85)')
+      gradient.addColorStop(0.3, 'rgba(0,0,0,0.4)')
+      gradient.addColorStop(0.55, 'rgba(0,0,0,0)')
+      g.fillStyle = gradient
+      g.fillRect(0, 0, 256, 256)
+      g.globalCompositeOperation = 'source-over'
+      shadowMaterial.map!.needsUpdate = true
+    }
+    // 종이 · 연필 색은 페이지에서 읽는다: 종이 = body 바탕(랜딩은 --paper), 층 색 = 이름표의 계산된 색(--layer-*)
+    // 계약의 선 · 소켓: 다크는 밝은 청록, 라이트는 종이에서 읽히게 진한 청록. hot = 계약 장에서 밝아진 색
+    const paint = () => {
+      paper.set(getComputedStyle(document.body).backgroundColor)
+      washBase = dark.matches ? 0.09 : 0.24
+      for (const name of ['clients', 'contract', 'servers'] as const) inks[name].set(getComputedStyle(root.querySelector(`[data-part="${name}"]`)!).color)
+      inks.docker.set(dark.matches ? '#aeaeb2' : '#636366')
+      for (const name of order) edgeMaterials[name].color.copy(inks[name])
+      for (const m of halos) m.color.copy(inks.contract)
+      missing.color.copy(inks.contract)
+      paintShadow()
+      rimHot.set(dark.matches ? '#d6fbff' : '#05707b')
+      socketColor.set(dark.matches ? '#3ccfdc' : '#119cab')
+      socketHot.set(dark.matches ? '#ffffff' : '#04606a')
+      scanEdge.color.set(dark.matches ? '#9ff3f8' : '#0b8794')
+    }
+    paint()
+    const repaint = () => (paint(), (dirty = true))
+    system.addEventListener('change', repaint)
+    new MutationObserver(repaint).observe(document.documentElement, { attributeFilter: ['data-theme'] })
+
+    // 이름표: 층마다 다른 쪽으로 돼지꼬리 선을 뽑아 단다. 히어로는 세 층, 구조 장은 바닥판까지 네 층
+    // at: 선이 시작하는 층 위의 점 (월드 x · 층 가운데에서의 높이 · z), dir: 화면에서 이름표가 놓이는 쪽 (도, 0 = 오른쪽 · 90 = 아래), curl: 고리가 말리는 쪽
+    const tags: Record<Layer, { at: [number, number, number]; dir: number; curl: number }> = {
+      clients: { at: [-0.9, THICK / 2, -0.4], dir: -145, curl: 1 },
+      contract: { at: [S / Math.SQRT2 - 0.08, 0, 0], dir: 12, curl: -1 },
+      servers: { at: [-S / Math.SQRT2 + 0.08, 0, 0], dir: -168, curl: 1 },
+      docker: { at: [BASE / 2 / Math.SQRT2 - 0.08, 0, BASE / 2 / Math.SQRT2 - 0.08], dir: 40, curl: 1 },
+    }
+    const leaders = root.querySelector<SVGSVGElement>('[data-leaders]')!
+    const tagged = (selector: string) =>
+      order.flatMap((name, layer) => {
+        const label = root.querySelector<HTMLElement>(`[${selector}="${name}"]`)
+        if (!label) return []
+        const g = leaders.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'g'))
+        g.setAttribute('style', label.getAttribute('style')!)
+        g.innerHTML = '<path pathLength="1" /><circle r="2.6" />'
+        const [line, dot] = g.children as unknown as [SVGPathElement, SVGCircleElement]
+        return [{ name, layer, label, line, dot }]
+      })
+    const heroLabels = tagged('data-hero')
+    const partLabels = tagged('data-part')
+
+    const target = new THREE.Vector3()
+    const right = new THREE.Vector3()
+    const up = new THREE.Vector3()
+    const back = new THREE.Vector3()
+    const point = new THREE.Vector3()
+    const flipQ = new THREE.Quaternion()
+    const nudge = new THREE.Vector3()
+    const zAxis = new THREE.Vector3(0, 0, 1)
+    let width = 1
+    let height = 1
+    let wide = true
+    let dirty = true // 다음 프레임에 다시 그린다
+    let lastY = NaN
+    let scanAt = 0 // PR 장(스캔하는 장)의 진행 (0..1)
+    let shownBoil = -1
+    // 두 배치: 히어로(글 아래 가운데) · 장(넓으면 오른쪽, 좁으면 위). 화면 위치는 시야를 옮겨(view offset) 맞춘다
+    const heroView = { distance: 20, x: 0, y: 0 }
+    const chapterView = { distance: 20, x: 0, y: 0 }
+
+    function aim(azimuthDeg: number, elevationDeg: number, distance: number, start = 0) {
+      const azimuth = start + THREE.MathUtils.degToRad(azimuthDeg)
+      const elevation = THREE.MathUtils.degToRad(elevationDeg)
+      camera.position.set(Math.sin(azimuth) * Math.cos(elevation), Math.sin(elevation), Math.cos(azimuth) * Math.cos(elevation))
+      camera.position.multiplyScalar(distance).add(target)
+      camera.lookAt(target)
+    }
+    const fit = (w: number, h: number) => {
+      const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2))
+      return Math.max((STACK_H * height) / (2 * tan * h), (STACK_W * height) / (2 * tan * w))
+    }
+
+    // 화면 크기에 맞춰 두 배치 · 흩어진 자리를 다시 잡는다
+    function layout() {
+      width = stage.clientWidth
+      height = stage.clientHeight
+      wide = width >= 900
+      renderer.setSize(width, height, false)
+      for (const m of [...Object.values(edgeMaterials), gridMaterial, missing]) m.resolution.set(width, height)
+      for (const m of Object.values(materials)) m.uniforms.pixelRatio.value = renderer.getPixelRatio()
+      camera.aspect = width / height
+      const copyBottom = copy.offsetHeight
+      const room = Math.max(height - copyBottom, height * 0.4)
+      heroView.distance = fit(width * (width < 700 ? 0.6 : 0.36), room * 0.72)
+      heroView.x = 0
+      heroView.y = height / 2 - (copyBottom + room / 2)
+      if (wide) chapterView.distance = fit(width * 0.36, height * 0.62) // 자리는 장마다 (pose.place)
+      else {
+        chapterView.distance = fit(width * 0.7, height * 0.3)
+        chapterView.y = height / 2 - height * 0.25
+        chapterView.x = 0
+      }
+
+      // 흩어진 자리는 히어로 배치의 화면 기준
+      camera.setViewOffset(width, height, heroView.x, heroView.y, width, height)
+      camera.updateProjectionMatrix()
+      aim(0, 30, heroView.distance)
+      camera.updateMatrixWorld()
+      right.setFromMatrixColumn(camera.matrixWorld, 0)
+      up.setFromMatrixColumn(camera.matrixWorld, 1)
+      back.setFromMatrixColumn(camera.matrixWorld, 2)
+      const halfH = heroView.distance * Math.tan(THREE.MathUtils.degToRad(FOV / 2))
+      const halfW = halfH * camera.aspect
+      const center = point.copy(target).addScaledVector(up, (-heroView.y / height) * 2 * halfH)
+      // 좁은 화면은 글자가 가로를 다 쓰므로 흩어진 자리를 글자 아래로 모은다
+      const below = 1 - (2 * copyBottom) / height - 0.05
+      pieces.forEach((piece, i) => {
+        const [nx, ny, depth] = scatter[i]
+        const y = width < 700 ? -1 + ((ny + 1) / 2) * (below + 1) : ny
+        piece.from.copy(center).addScaledVector(right, nx * halfW).addScaledVector(up, y * halfH).addScaledVector(back, -depth)
+      })
+      dirty = true
+    }
+
+    let frozen = false // 개발용 ?at= : 시간을 멈춘다 (흔들림 없이 같은 그림)
+    const stickTop = parseFloat(getComputedStyle(stage).top) || 0
+    const heroProgress = () => {
+      const rect = hero.getBoundingClientRect()
+      const travel = rect.height - stage.offsetHeight
+      return travel > 0 ? clamp01((stickTop - rect.top) / travel) : 1
+    }
+    // 장의 글 윗변이 화면의 어디쯤인가 (0 = 위, 1 = 아래)
+    const textTop = (el: HTMLElement) => (el.firstElementChild ?? el).getBoundingClientRect().top / window.innerHeight
+    // 앞 장이 사라지는 동안 다음 장이 들어온다 (비는 순간이 없게)
+    const below = (el: HTMLElement) => wide && el.dataset.layout === 'center'
+    const enter = (top: number, el: HTMLElement) => (below(el) ? smoothstep(0.98, 0.8, top) : wide ? smoothstep(0.98, 0.72, top) : smoothstep(0.98, 0.8, top))
+    const leave = (top: number, el: HTMLElement) => (below(el) ? smoothstep(0.5, 0.36, top) : wide ? smoothstep(0.1, -0.2, top) : smoothstep(0.47, 0.38, top))
+    // 다 들어온 자리의 글 윗변 (개발용 ?at= 이 쓴다)
+    const settled = (el: HTMLElement) => (below(el) ? 0.72 : wide ? 0.6 : 0.62)
+
+    const pose: Required<Pose> = { lift: [0, 0, 0, 0], dim: [0, 0, 0], glow: 0, flip: 0, base: 0, azimuth: 0, elevation: 30, zoom: 1, skew: 0, packets: [0, 0, 0, 0], wire: 0, place: [0.73, 0.5] }
+    const none = [0, 0, 0, 0]
+    const onRight = [0.73, 0.5] // place 가 없는 모습의 자리
+    function mix(story: number) {
+      const i = Math.min(Math.floor(story), poses.length - 2)
+      const t = easeOut(clamp01(story - i))
+      const a = poses[i]
+      const b = poses[i + 1]
+      for (let k = 0; k < 4; k++) pose.lift[k] = lerp(a.lift[k], b.lift[k], t)
+      for (let k = 0; k < 3; k++) pose.dim[k] = lerp(a.dim[k], b.dim[k], t)
+      pose.glow = lerp(a.glow, b.glow, t)
+      pose.flip = lerp(a.flip, b.flip, t)
+      pose.base = lerp(a.base, b.base, t)
+      pose.azimuth = lerp(a.azimuth, b.azimuth, t)
+      pose.elevation = lerp(a.elevation, b.elevation, t)
+      pose.zoom = lerp(a.zoom, b.zoom, t)
+      pose.skew = lerp(a.skew ?? 0, b.skew ?? 0, t)
+      pose.wire = lerp(a.wire ?? 0, b.wire ?? 0, t)
+      for (let k = 0; k < 2; k++) pose.place[k] = lerp((a.place ?? onRight)[k], (b.place ?? onRight)[k], t)
+      for (let k = 0; k < 4; k++) pose.packets[k] = lerp((a.packets ?? none)[k], (b.packets ?? none)[k], t)
+    }
+
+    // 돼지꼬리: (ax, ay) 에서 (bx, by) 로 살짝 휘어 가다 가운데쯤에서 한 바퀴 말린다 (늘인 사이클로이드: 앞으로 a, 고리 반지름 b)
+    function pigtail(ax: number, ay: number, bx: number, by: number, curl: number) {
+      const len = Math.hypot(bx - ax, by - ay)
+      const ux = (bx - ax) / len
+      const uy = (by - ay) / len
+      const a = 2.6
+      const b = 7.5
+      const mid = len * 0.55
+      const at = (u: number, v: number) => {
+        const w = curl * (v + 3 * Math.sin((Math.PI * u) / len))
+        return `${(ax + ux * u - uy * w).toFixed(1)} ${(ay + uy * u + ux * w).toFixed(1)}`
+      }
+      const points: string[] = []
+      for (let k = 0; k <= 8; k++) points.push(at(((mid - a * Math.PI) * k) / 8, 0))
+      for (let k = 1; k < 28; k++) {
+        const t = -Math.PI + (2 * Math.PI * k) / 28
+        points.push(at(mid + a * t - b * Math.sin(t), -b * (1 + Math.cos(t))))
+      }
+      for (let k = 0; k <= 8; k++) points.push(at(mid + a * Math.PI + ((len - mid - a * Math.PI) * k) / 8, 0))
+      return `M${points.join('L')}`
+    }
+
+    function placeLabels(labels: typeof heroLabels, shown: number) {
+      const reach = Math.max(44, Math.min(76, width * 0.06))
+      for (const { name, layer, label, line, dot } of labels) {
+        label.style.opacity = String(smoothstep(0.6, 1, shown))
+        line.style.strokeDashoffset = String(1 - shown)
+        dot.style.opacity = shown > 0.01 ? '1' : '0'
+        if (shown < 0.01) continue
+        const { at, dir, curl } = tags[name]
+        point.set(at[0], layers[name].y + pose.lift[layer] + at[1], at[2]).project(camera)
+        const ax = ((point.x + 1) / 2) * width
+        const ay = ((1 - point.y) / 2) * height
+        const ux = Math.cos(THREE.MathUtils.degToRad(dir))
+        const uy = Math.sin(THREE.MathUtils.degToRad(dir))
+        const bx = ax + ux * reach
+        const by = ay + uy * reach
+        line.setAttribute('d', pigtail(ax, ay, bx, by, curl))
+        dot.setAttribute('cx', ax.toFixed(1))
+        dot.setAttribute('cy', ay.toFixed(1))
+        // 이름표는 선 끝에서 바깥쪽으로: 선이 닿는 변(또는 꼭짓점)이 선 끝에 오게
+        const m = Math.max(Math.abs(ux), Math.abs(uy))
+        label.style.transform = `translate(${bx + ux * 6}px, ${by + uy * 6}px) translate(${(ux / m - 1) * 50}%, ${(uy / m - 1) * 50}%)`
+      }
+    }
+
+    function render(seconds: number) {
+      const progress = heroProgress()
+      // story: 장마다 들어온 정도를 더한 값 (0 = 히어로 끝, n = n 번째 장)
+      let story = 0
+      for (let i = 0; i < chapters.length; i++) {
+        const top = textTop(chapters[i])
+        const shown = enter(top, chapters[i])
+        story += shown
+        const out = i === chapters.length - 1 ? 0 : leave(top, chapters[i])
+        chapters[i].style.setProperty('--in', String(shown * (1 - out)))
+        if (i === SCAN - 1) scanAt = clamp01((0.85 - top) / 0.95)
+        if (i === chapters.length - 1) for (let r = 0; r < rows.length; r++) rows[r].style.setProperty('--row', String(smoothstep(0.1 + r * 0.16, 0.36 + r * 0.16, clamp01((1 - top) / 0.5))))
+      }
+      // 장이 들어오면 히어로 글은 위로 사라진다
+      const away = smoothstep(0, 0.5, story)
+      copy.style.opacity = String(1 - away)
+      copy.style.pointerEvents = away > 0.5 ? 'none' : ''
+      stage.style.setProperty('--frame', String(smoothstep(0.3, 0.9, story)))
+      const current = Math.min(chapters.length, Math.max(1, Math.round(story)))
+      if (current !== shownFig) {
+        shownFig = current
+        const two = (n: number) => String(n).padStart(2, '0')
+        fig.textContent = `FIG. ${two(current)} — ${chapters[current - 1].dataset.chapter}`
+        beat.textContent = `${two(current)} / ${two(chapters.length)}`
+      }
+
+      mix(story)
+      // 연필 선 떨림: 1 초에 8 번 다른 모양으로 (멈춘 화면 ?at= 에서는 그대로)
+      const boil = frozen ? 0 : Math.floor(seconds * 8) % BOIL
+      if (boil !== shownBoil) {
+        shownBoil = boil
+        for (const stroke of strokes) stroke.line.geometry = stroke.variants[boil]
+        socket.map = socketTextures[boil]
+        for (const m of halos) m.map = circleTextures[boil]
+        dirty = true
+      }
+      // 다 쌓인 뒤에는 바뀔 때만 그린다. 단 알갱이 · 흔들림이 있는 장은 계속 움직인다
+      const live = pose.skew > 0.01 || pose.packets.some((v) => v > 0.01)
+      const idle = progress < 1 && !frozen
+      if (!idle && !live && !dirty && scrollY === lastY) return
+      dirty = false
+      lastY = scrollY
+      const t = frozen ? 0 : seconds
+      const k = smoothstep(0, 1, story)
+      const viewX = wide ? width / 2 - width * pose.place[0] : chapterView.x
+      const viewY = wide ? height / 2 - height * pose.place[1] : chapterView.y
+      camera.setViewOffset(width, height, lerp(heroView.x, viewX, k), lerp(heroView.y, viewY, k), width, height)
+      if (wide) {
+        stage.style.setProperty('--gx', `${pose.place[0] * 100}%`)
+        stage.style.setProperty('--gy', `${pose.place[1] * 100}%`)
+      }
+      camera.updateProjectionMatrix()
+      aim(pose.azimuth, pose.elevation, lerp(heroView.distance, chapterView.distance, k) * pose.zoom, lerp(AZIMUTH_START, 0, easeOut(progress)))
+
+      // 스캔: PR 장이 지나가는 동안 위에서 아래로 한 번
+      const sweep = story > SCAN - 1.2 && story < SCAN + 0.8 ? scanAt : 0
+      scan.visible = sweep > 0 && sweep < 1
+      scan.position.y = lerp(layers.clients.y + 0.6, layers.docker.y - 0.3, sweep)
+      scanFace.opacity = 0.14 * Math.sin(Math.PI * sweep)
+      scanEdge.opacity = 0.9 * Math.sin(Math.PI * sweep)
+
+      // 층 높이 (들어 올린 만큼): 알갱이 길과 스캔이 쓴다
+      clientBottom = layers.clients.y + pose.lift[0] - THICK / 2
+      contractY = layers.contract.y + pose.lift[1]
+      serverTop = layers.servers.y + pose.lift[2] + THICK / 2
+      standingTop = layers.servers.y + pose.lift[2] + (S / 3 - GAP) / 2
+      const scanHit = scan.visible ? near(scan.position.y, contractY) : 0
+
+      // 층 칠 · 빗금 · 연필 선: 흐리게(dim)는 칠과 빗금 · 선을 종이 색으로 바래게, 도면(wire)은 빗금을 걷어 선만 남긴다
+      for (let l = 0; l < 4; l++) {
+        const name = order[l]
+        const fade = l < 3 ? pose.dim[l] * 0.85 : 0
+        const u = materials[name].uniforms
+        const light = name === 'contract' ? 0.5 : 1 // 계약 판은 얇아서 빗금 · 칠을 옅게
+        u.wash.value = washBase * light * (1 - fade) * (1 - pose.wire * 0.6)
+        u.hatch.value = light * (1 - fade) * (1 - pose.wire)
+        edgeMaterials[name].opacity = 1 - fade * 0.8
+      }
+      const gone = smoothstep(0.5, 1, pose.dim[1])
+      materials.contract.uniforms.opacity.value = 1 - gone * 0.95
+      missing.opacity = gone
+      edgeMaterials.contract.opacity *= 1 - gone
+      // 계약 장: 판 전체가 아니라 테두리 · 소켓이 밝아지고 소켓 둘레가 번진다
+      const fade = pose.dim[1] * 0.85
+      edgeMaterials.contract.color.copy(inks.contract).lerp(rimHot, Math.max(pose.glow, scanHit))
+      gridMaterial.color.copy(edgeMaterials.contract.color).lerp(paper, 0.45)
+      gridMaterial.opacity = edgeMaterials.contract.opacity
+      socket.color.copy(socketColor).lerp(socketHot, Math.max(pose.glow, scanHit)).lerp(paper, fade) // 흐린 장에서는 종이 색으로 바랜다
+      for (const s of sockets) s.scale.setScalar(1 + 0.35 * pose.glow)
+
+      pieces.forEach((piece, i) => {
+        const e = easeOut(clamp01((progress - piece.start) / piece.duration))
+        const still = 1 - e
+        const l = order.indexOf(piece.layer)
+        piece.mesh.position.lerpVectors(piece.from, piece.to, e)
+        piece.mesh.position.y += Math.sin(t * 0.9 + i * 1.7) * 0.18 * still + pose.lift[l] * e
+        piece.mesh.quaternion.slerpQuaternions(piece.fromQ, yaw, e)
+        piece.mesh.rotateY(Math.sin(t * 0.5 + i) * 0.25 * still)
+        // 어긋남: 계약 판은 그대로, 나머지 조각은 정해 둔 만큼 뜨고 밀리고 기운다
+        if (piece.layer !== 'contract') {
+          const s = pose.skew * e * (1 + 0.3 * Math.sin(t * 1.4 + i))
+          const [dy, dz, tiltX, tiltZ] = skewed[i]
+          piece.mesh.position.add(nudge.set(0, dy * s, dz * s).applyQuaternion(yaw))
+          piece.mesh.rotateX(tiltX * s)
+          piece.mesh.rotateZ(tiltZ * s)
+        }
+        // 서버 조각은 긴 축으로 함께 돈다: 반쯤이면 세워진 같은 모양 셋, 다 돌면 처음처럼 눕는다
+        if (piece.layer === 'servers') piece.mesh.quaternion.multiply(flipQ.setFromAxisAngle(zAxis, Math.PI * pose.flip))
+      })
+
+      // 바닥판은 아래에서 올라와 서버 밑에 놓인다
+      base.position.set(0, layers.docker.y + pose.lift[3] - (1 - pose.base) * 2.5, 0)
+      materials.docker.uniforms.opacity.value = edgeMaterials.docker.opacity = smoothstep(0, 0.35, pose.base)
+      base.visible = pose.base > 0.001
+      shadow.position.y = lerp(layers.servers.y - 0.55, layers.docker.y - 0.2, pose.base) + Math.min(pose.lift[2], pose.lift[3])
+      shadowMaterial.opacity = smoothstep(0.35, 0.9, progress)
+
+      // 알갱이: 소켓마다 하나씩, 무리마다 다른 빠르기. 알갱이 머리가 지나는 소켓에 동그라미가 쳐진다
+      const [fail, trip, up, grpc] = pose.packets
+      socketAt.forEach((_, k) => {
+        const phase = k / socketAt.length + (k % 2) * 0.08
+        draw(flows.fail[k], paths.fail, k, (t * 0.45 + phase) % 1, fail)
+        const yTrip = draw(flows.trip[k], paths.trip, k, (t * 0.32 + phase) % 1, trip)
+        const yUp = draw(flows.up[k], paths.up, k, (t * 0.28 + phase) % 1, up)
+        pulse[k] = Math.max(trip * (near(yTrip, contractY) || 0), up * (near(yUp, contractY) || 0))
+      })
+      routes.forEach((_, k) => draw(flows.grpc[k], paths.grpc, k, (t * 0.4 + k / routes.length) % 1, grpc))
+      halos.forEach((m, k) => (m.opacity = Math.min(1, pose.glow * 0.7 + pulse[k]) * 0.85))
+
+      renderer.render(scene, camera)
+
+      // 이름표: 히어로의 세 층은 장이 시작되면 사라지고, 구조 장에서 네 층 이름이 나온다
+      placeLabels(heroLabels, smoothstep(0.82, 0.97, progress) * (1 - smoothstep(0, 0.4, story)))
+      placeLabels(partLabels, smoothstep(chapters.length - 0.8, chapters.length - 0.1, story))
+    }
+
+    // 화면에 보일 때만 돈다. 다 쌓인 뒤에는 스크롤 · 크기 · 테마가 바뀔 때만 그린다
+    let visible = false
+    let frame = 0
+    const loop = (now: number) => {
+      render(now / 1000)
+      frame = visible ? requestAnimationFrame(loop) : 0
+    }
+    new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting
+      if (visible && !frame) frame = requestAnimationFrame(loop)
+    }).observe(root)
+    new ResizeObserver(layout).observe(stage)
+    layout()
+    render(0)
+
+    // 개발용: ?at=0..1 은 히어로 진행, 1+n 은 n 번째 장이 다 들어온 자리. 그 위치로 스크롤하고 시간을 멈춘다 (빌드에서는 빠진다)
+    if (import.meta.env.DEV) {
+      const at = new URLSearchParams(location.search).get('at')
+      if (at !== null) {
+        frozen = true
+        history.scrollRestoration = 'manual'
+        const a = Number(at)
+        const heroTop = hero.getBoundingClientRect().top + scrollY
+        const travel = hero.offsetHeight - stage.offsetHeight
+        const stops = [heroTop - stickTop + travel]
+        for (const el of chapters) stops.push((el.firstElementChild ?? el).getBoundingClientRect().top + scrollY - settled(el) * innerHeight)
+        const i = Math.min(Math.floor(a - 1), stops.length - 2)
+        const y = a <= 1 ? heroTop - stickTop + clamp01(a) * travel : lerp(stops[i], stops[i + 1], a - 1 - i)
+        scrollTo({ top: y, behavior: 'instant' })
+      }
+    }
+  }
+</script>

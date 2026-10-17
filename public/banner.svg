@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">iStack</title>
+  <desc id="desc">On warm sketch paper with a blue pencil grid, a pencil-sketched stack in violet, cyan, and amber sits beside the handwritten iStack wordmark and tagline.</desc>
+  <!-- 공유 이미지(banner.png)의 원본. 랜딩과 같은 종이 · 모눈 · 연필 스택 · 손글씨. 손글씨는 사이트의 /fonts 를 쓰므로 사이트에서 열어 그대로 찍어 banner.png 로 저장한다 -->
+  <style>
+    @font-face { font-family: 'iStack Sketch'; font-weight: 400; src: url('/fonts/sketch-400.woff2') format('woff2'); }
+    @font-face { font-family: 'iStack Sketch'; font-weight: 700; src: url('/fonts/sketch-700.woff2') format('woff2'); }
+    .hand { font-family: 'iStack Sketch', 'Gaegu', sans-serif; }
+  </style>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" stroke="rgb(64 90 170 / .16)" stroke-width="1"/></pattern>
+    <path id="t" d="M159 25L292 99L161 176L27 101Z"/>
+    <path id="m" d="M28 137L161 211L291 135V181L159 256L29 179Z"/>
+    <path id="b" d="M29 215L160 293L292 217V259L160 335L27 261Z"/>
+    <pattern id="ht" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><path d="M0 13H26" stroke="#7B5CF0" stroke-width="5"/></pattern>
+    <pattern id="hm" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><path d="M0 13H26" stroke="#1FA5B3" stroke-width="5"/></pattern>
+    <pattern id="hb" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><path d="M0 13H26" stroke="#D08A1E" stroke-width="5"/></pattern>
+  </defs>
+  <rect width="1280" height="640" fill="#F4EFE3"/>
+  <rect width="1280" height="640" fill="url(#grid)"/>
+
+  <!-- 연필 스택 (로고와 같은 그림) -->
+  <g transform="translate(214 166) scale(.86)" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#b" fill="#FFCB7A" fill-opacity=".45"/>
+    <use href="#b" fill="url(#hb)"/>
+    <use href="#b" stroke="#D08A1E" stroke-width="9"/>
+    <use href="#b" stroke="#D08A1E" stroke-width="4" transform="rotate(1.4 160 275) translate(6 -5)"/>
+    <use href="#m" fill="#28CBD8" fill-opacity=".4"/>
+    <use href="#m" fill="url(#hm)"/>
+    <use href="#m" stroke="#1FA5B3" stroke-width="9"/>
+    <use href="#m" stroke="#1FA5B3" stroke-width="4" transform="rotate(-1.2 160 196) translate(-5 4)"/>
+    <use href="#t" fill="#9878FF" fill-opacity=".4"/>
+    <use href="#t" fill="url(#ht)"/>
+    <use href="#t" stroke="#7B5CF0" stroke-width="9"/>
+    <use href="#t" stroke="#7B5CF0" stroke-width="4" transform="rotate(1.6 160 100) translate(5 -4)"/>
+  </g>
+
+  <!-- 손글씨 이름 · 계약 색으로 두 번 그은 밑줄 · 한 줄 소개 -->
+  <text class="hand" x="548" y="344" fill="#111111" font-size="172" font-weight="700">iStack</text>
+  <g stroke="#0B8794" stroke-linecap="round" fill="none">
+    <path d="M552 384C640 372 730 392 820 378S950 370 994 380" stroke-width="7"/>
+    <path d="M566 396C660 386 770 400 984 390" stroke-width="3.5" opacity=".6"/>
+  </g>
+  <text class="hand" x="554" y="462" fill="#5B5852" font-size="36">여러 언어의 서버 · 클라이언트를</text>
+  <text class="hand" x="554" y="512" fill="#5B5852" font-size="36">계약 하나로 잇는 모노레포 템플릿</text>
+</svg>

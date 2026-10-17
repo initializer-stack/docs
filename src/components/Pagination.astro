@@ -1,0 +1,104 @@
+---
+// 이전 · 다음 (지금 탭 안에서 사이드바 순서). 다음 쪽만 카드로 드러내고 이전은 조용한 링크로 둔다 (마지막 쪽은 이전이 카드)
+import { locate, pagesOf } from '../sidebar'
+
+const here = Astro.url.pathname
+const pages = pagesOf(locate(here).tab)
+const i = pages.findIndex((p) => p.link === here)
+const prev = i > 0 ? pages[i - 1] : undefined
+const next = i >= 0 ? pages[i + 1] : undefined
+const chevron = { prev: 'm10 3.5-4.5 4.5 4.5 4.5', next: 'm6 3.5 4.5 4.5L6 12.5' }
+---
+
+{
+  (prev || next) && (
+    <nav aria-label="이전 · 다음">
+      {prev && next && (
+        <a class="prev" href={prev.link} aria-label={`이전: ${prev.label}`}>
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d={chevron.prev} /></svg>이전
+        </a>
+      )}
+      {next ? (
+        <a class="card" href={next.link}>
+          <strong>{next.label}</strong>
+          <span class="dir">
+            다음<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d={chevron.next} /></svg>
+          </span>
+        </a>
+      ) : (
+        <a class="card back" href={prev!.link}>
+          <span class="dir">
+            <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d={chevron.prev} /></svg>이전
+          </span>
+          <strong>{prev!.label}</strong>
+        </a>
+      )}
+    </nav>
+  )
+}
+
+<style>
+  /* 그룹 바탕 위에 한 단계 뜬 카드 (라이트는 회색 위 흰 카드, 다크는 검정 위 짙은 회색 카드) */
+  nav {
+    display: flex;
+    margin-top: var(--space-12);
+    padding: var(--space-1);
+    border-radius: var(--radius-lg);
+    background: var(--grouped-background);
+  }
+  a {
+    display: flex;
+    align-items: center;
+    font-size: var(--text-sm);
+    text-decoration: none;
+  }
+  svg {
+    fill: none;
+    stroke: var(--tertiary-label);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .prev {
+    gap: var(--space-1);
+    padding: 0 var(--space-6) 0 var(--space-3);
+    color: var(--secondary-label);
+  }
+  .card {
+    flex: 1;
+    justify-content: flex-end;
+    gap: var(--space-4);
+    min-width: 0;
+    padding: var(--space-4);
+    border-radius: var(--radius);
+    color: var(--label);
+    background: var(--grouped-item);
+  }
+  .card.back {
+    justify-content: flex-start;
+  }
+  strong {
+    overflow: hidden;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .dir {
+    display: flex;
+    flex: none;
+    gap: var(--space-1);
+    align-items: center;
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--separator);
+    color: var(--secondary-label);
+  }
+  .back .dir {
+    padding: 0 var(--space-4) 0 0;
+    border: 0;
+    border-right: 1px solid var(--separator);
+  }
+  .prev:hover,
+  .card:hover .dir {
+    color: var(--label);
+  }
+</style>

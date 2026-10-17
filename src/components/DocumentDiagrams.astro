@@ -1,0 +1,410 @@
+<!-- 문서 그림의 연필 떨림: 테두리 · 아이콘을 잡음으로 살짝 흔들고, 씨앗을 1 초에 8 번 바꿔 손그림처럼 떨게 한다 (--rough). 움직임을 줄이면 멈춘다 -->
+<svg class="di-defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <filter id="di-rough" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="1">
+      <animate attributeName="seed" values="1;2;3" dur="0.375s" calcMode="discrete" repeatCount="indefinite" />
+    </feTurbulence>
+    <feDisplacementMap in="SourceGraphic" scale="3" />
+  </filter>
+</svg>
+
+<style is:global>
+  /* 스케치: 랜딩 · 구조 지도와 같은 종이 · 파란 연필 모눈 위에, 칸은 연필 테두리 두 줄, 고른 칸은 빗금 */
+  .di-defs { position: absolute; width: 0; height: 0; }
+  .doc-diagram {
+    --pencil: color-mix(in srgb, var(--label) 62%, transparent);
+    --rough: url(#di-rough);
+    margin: var(--space-6) 0;
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background-color: var(--paper);
+    background-image: linear-gradient(var(--paper-grid) 1px, transparent 1px), linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: center;
+    font-size: var(--text-sm);
+  }
+  .di-step,
+  .di-node,
+  .di-branches > div,
+  .di-tree-inspector,
+  .di-play {
+    position: relative;
+    isolation: isolate;
+  }
+  .di-step::before, .di-step::after,
+  .di-node::before, .di-node::after,
+  .di-branches > div::before, .di-branches > div::after,
+  .di-tree-inspector::before, .di-tree-inspector::after,
+  .di-play::before, .di-play::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 2px;
+    border: 1.5px solid var(--card-pencil, var(--pencil));
+    border-radius: 11px 15px 12px 9px;
+    filter: var(--rough);
+    pointer-events: none;
+    transition: border-color 300ms ease;
+  }
+  .di-step::before, .di-node::before, .di-branches > div::before, .di-tree-inspector::before, .di-play::before { rotate: -0.5deg; }
+  .di-step::after, .di-node::after, .di-branches > div::after, .di-tree-inspector::after, .di-play::after {
+    inset: 4px 1px 1px 4px;
+    border-width: 1.2px;
+    border-radius: 14px 9px 13px 11px;
+    rotate: 0.6deg;
+    opacity: 0.5;
+  }
+  .di-heading, .di-root { display: flex; align-items: center; gap: var(--space-2); }
+  .di-heading { justify-content: space-between; margin-bottom: var(--space-6); font-weight: 600; }
+  .di-root { font-family: var(--font-mono); }
+  .di-root svg { color: var(--accent); flex-shrink: 0; filter: var(--rough); }
+  .di-heading-caption { color: var(--secondary-label); font-size: var(--text-xs); font-weight: 400; }
+  .di-play {
+    border: 0;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: var(--text-xs);
+    cursor: pointer;
+  }
+  .di-play[hidden] { display: none; }
+  .prose .di-route {
+    display: grid;
+    grid-template-columns: repeat(var(--di-steps), minmax(0, 1fr));
+    gap: var(--space-3);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .prose .di-route > li { position: relative; margin: 0; min-width: 0; }
+  .di-route > li:not(:last-child)::after {
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    translate: 0 -50%;
+    content: '›';
+    color: var(--secondary-label);
+  }
+  .di-step {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 136px;
+    height: 100%;
+    padding: var(--space-3);
+    border: 0;
+    background: transparent;
+    color: var(--label);
+    font: inherit;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  .di-step-index { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--secondary-label); }
+  .di-step-name { font-size: var(--text-sm); font-weight: 600; }
+  .di-step-caption { font-size: var(--text-xs); color: var(--secondary-label); }
+  .di-step[aria-current='step'] { --card-pencil: var(--accent); }
+  .di-step[aria-current='step']::before { background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--accent) 22%, transparent) 0 1.4px, transparent 1.4px 8px); }
+  .di-step[aria-current='step'] .di-step-index { color: var(--accent); }
+  .di-branches { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-6); }
+  .di-branches > div {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4);
+  }
+  .di-branches[data-active='true'] > div { --card-pencil: var(--orange); }
+  .di-branches[data-active='true'] > div::before { background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--orange) 22%, transparent) 0 1.4px, transparent 1.4px 8px); }
+  .di-branch-source { font-family: var(--font-mono); }
+  .di-branch-arrow, .di-branches > div > span:last-child { color: var(--secondary-label); font-size: var(--text-xs); }
+  .di-branch-arrow { transition: translate 300ms ease; }
+  .di-branches[data-active='true'] .di-branch-arrow { translate: 0 3px; color: var(--orange); }
+  .di-step-description { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: var(--space-4); margin-top: var(--space-6); }
+  .di-step-description > span { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--accent); padding-top: 3px; }
+  .prose .di-step-description p { margin: 0; }
+  .doc-diagram.di-flow .di-note { margin: var(--space-4) 0 0; color: var(--secondary-label); font-size: var(--text-xs); }
+  .di-tree-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+  .prose .di-tree-list, .prose .di-tree-list ul { margin: 0; padding: 0; list-style: none; }
+  .prose .di-tree-list ul { padding: var(--space-1) 0 var(--space-1) var(--space-4); }
+  .prose .di-tree-list li { margin: 0; }
+  .di-tree-folder > summary, .di-tree-file {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-3) var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--label);
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-align: left;
+    list-style: none;
+    cursor: pointer;
+    position: relative;
+    isolation: isolate;
+  }
+  .di-tree-folder > summary::before, .di-tree-file::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 2px 0;
+    border: 1.8px solid transparent; /* 더 가늘면 떨림 필터에 끊겨 점선처럼 보인다 */
+    border-radius: 6px 9px 7px 5px;
+    pointer-events: none;
+  }
+  /* 떨림 필터는 보이는 칸(올린 · 고른)에만 건다: 빈 칸까지 1 초에 8 번 다시 그리지 않게 */
+  .di-tree-folder > summary:hover::before, .di-tree-file:hover::before {
+    filter: var(--rough);
+    background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--label) 10%, transparent) 0 1.2px, transparent 1.2px 8px);
+  }
+  .di-tree-list [data-selected='true']::before, .di-tree-list [data-selected='true']:hover::before {
+    filter: var(--rough);
+    border-color: var(--accent);
+    background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--accent) 18%, transparent) 0 1.2px, transparent 1.2px 8px);
+  }
+  .di-tree-folder > summary::-webkit-details-marker { display: none; }
+  .di-tree-folder > summary > svg, .di-tree-file > svg { flex-shrink: 0; color: var(--accent); filter: var(--rough); }
+  .di-tree-file > svg { color: var(--secondary-label); }
+  .di-tree-folder > summary > span:first-of-type, .di-tree-file > span { min-width: 0; overflow-wrap: anywhere; }
+  .di-chevron { margin-left: auto; color: var(--secondary-label); transition: rotate 250ms ease; }
+  .di-tree-folder[open] > summary .di-chevron { rotate: 90deg; }
+  .di-tree-folder[open] > ul { animation: di-reveal 300ms ease both; }
+  .di-tree-inspector {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-6));
+    padding: var(--space-4);
+  }
+  .di-inspector-label { display: block; margin-bottom: var(--space-3); color: var(--secondary-label); font-size: var(--text-xs); }
+  .prose .di-tree-inspector code { display: block; padding: 0; border: 0; background: none; color: var(--label); font-size: var(--text-xs); }
+  .prose .di-tree-inspector p { margin: var(--space-4) 0 0; }
+  .di-tree[data-enhanced] .di-static-description { display: none; }
+  .di-static-description { display: block; padding: 0 var(--space-2) var(--space-3); color: var(--secondary-label); font-size: var(--text-xs); }
+  .di-static-steps { margin-top: var(--space-4); }
+  /* 화살표 흐름도: 칸은 단마다 한 줄, 이음은 스크립트가 칸의 자리를 재서 연필 선으로 (gRPC 는 점선) */
+  .di-graph-board {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--di-cols), minmax(0, 1fr));
+    gap: 88px var(--space-6);
+    padding: var(--space-2) 0;
+  }
+  .di-node { justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 128px; padding: var(--space-3) var(--space-4); text-align: center; }
+  .di-node strong { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; }
+  .di-node span { font-size: var(--text-xs); color: var(--secondary-label); }
+  .di-graph-lines { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; overflow: visible; pointer-events: none; filter: var(--rough); }
+  .di-graph-lines path { fill: none; stroke: var(--pencil); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .di-graph-lines .grpc { stroke-dasharray: 5 5; }
+  .di-graph-tag {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: min(176px, 40%); /* 좁은 그림에서도 갈래 둘의 라벨이 나란히 들어가게 */
+    padding: 1px 6px;
+    overflow-wrap: anywhere; /* 긴 이름(ActivityService.Record)은 칸에 안 들어갈 때만 줄을 바꾼다 */
+    background: var(--paper);
+    font-size: var(--text-xs);
+    line-height: 1.35;
+    text-align: center;
+    pointer-events: none;
+  }
+  .di-graph-tag .di-edge-label { font-family: var(--font-mono); color: var(--label); }
+  .di-graph-tag .di-edge-note { color: var(--secondary-label); }
+  .prose .di-graph-edges { margin: var(--space-6) 0 0; font-size: var(--text-xs); color: var(--secondary-label); }
+  /* 그린 뒤에는 목록을 화면에서 감추고 화면 읽기 프로그램에만 남긴다 */
+  .di-graph[data-enhanced] .di-graph-edges { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .doc-diagram[data-visible='true'] .di-route > li { animation: di-reveal 500ms ease both; animation-delay: calc(var(--di-order, 0) * 80ms); }
+  @keyframes di-reveal { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+  @media (max-width: 560px) {
+    .doc-diagram { padding: var(--space-4); }
+    .di-tree-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+    .di-tree-inspector { position: relative; } /* static 이면 연필 테두리(::before · ::after)가 바깥 조상에 붙는다 */
+    .prose .di-route { grid-template-columns: minmax(0, 1fr); }
+    .di-step { min-height: 64px; display: grid; grid-template-columns: 24px 1fr 1fr; align-items: center; }
+    .di-step-caption { text-align: right; }
+    .di-route > li:not(:last-child)::after { top: auto; right: 50%; bottom: -14px; translate: 50% 0; rotate: 90deg; }
+    .di-step-description { gap: var(--space-3); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .doc-diagram *, .doc-diagram *::before, .doc-diagram *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<script>
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.querySelector<SVGSVGElement>('.di-defs')?.pauseAnimations()
+  // 화살표 흐름도: 칸의 자리를 재서 이음을 연필 선으로 그리고 라벨을 단다. 칸 크기가 바뀌면 다시 그린다
+  // 받는 칸 윗변의 들어오는 자리는 나눠 쓰고, 사이에 다른 칸이 있는(단을 건너뛰는) 이음은 옆으로 나와 돌아간다
+  document.querySelectorAll<HTMLElement>('[data-doc-graph]').forEach((root) => {
+    const board = root.querySelector<HTMLElement>('.di-graph-board')!
+    const svg = board.querySelector<SVGSVGElement>('.di-graph-lines')!
+    const items = [...root.querySelectorAll<HTMLElement>('.di-graph-edges li')]
+    const nodes = new Map([...board.querySelectorAll<HTMLElement>('[data-node]')].map((el) => [el.dataset.node!, el]))
+    const tags = items.map((item) => {
+      const parts = item.querySelectorAll('.di-edge-label, .di-edge-note')
+      if (!parts.length) return null
+      const tag = document.createElement('span')
+      tag.className = 'di-graph-tag'
+      tag.setAttribute('aria-hidden', 'true')
+      parts.forEach((part) => tag.append(part.cloneNode(true)))
+      board.append(tag)
+      return tag
+    })
+    root.dataset.enhanced = 'true'
+    type Box = { l: number; r: number; t: number; b: number; x: number; y: number }
+    const path = (d: string, dashed: boolean) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      el.setAttribute('d', d)
+      if (dashed) el.setAttribute('class', 'grpc')
+      return el
+    }
+    const draw = () => {
+      const area = board.getBoundingClientRect()
+      const box = (el: Element): Box => {
+        const r = el.getBoundingClientRect()
+        return { l: r.left - area.left, r: r.right - area.left, t: r.top - area.top, b: r.bottom - area.top, x: (r.left + r.right) / 2 - area.left, y: (r.top + r.bottom) / 2 - area.top }
+      }
+      const boxes = new Map([...nodes].map(([id, el]) => [id, box(el)]))
+      const edges = items.map((item) => ({ item, s: boxes.get(item.dataset.from!)!, t: boxes.get(item.dataset.to!)!, ax: 0 }))
+      // 왼쪽에서 오는 이음은 왼쪽 자리에. 같은 쪽이면 위에서 먼 칸일수록 바깥 (옆으로 도는 선이 안쪽 선과 엇갈리지 않게)
+      for (const t of new Set(edges.map((e) => e.t))) {
+        const into = edges.filter((e) => e.t === t).sort((a, b) => (Math.abs(a.s.x - b.s.x) > 1 ? a.s.x - b.s.x : a.s.x > t.x ? a.s.t - b.s.t : b.s.t - a.s.t))
+        into.forEach((e, k) => (e.ax = t.l + ((t.r - t.l) * (k + 1)) / (into.length + 1)))
+      }
+      const lines: SVGPathElement[] = []
+      const taken = [...boxes.values()].map((b) => ({ ...b })) // 라벨이 피할 자리: 칸 · 앞서 단 라벨
+      edges.forEach(({ item, s, t, ax }, i) => {
+        const between = [...boxes.values()].some((n) => n !== s && n !== t && n.t > s.b - 1 && n.b < t.t + 1 && n.r > Math.min(s.x, ax) - 8 && n.l < Math.max(s.x, ax) + 8)
+        // 선 · 라벨 자리 후보(선 위의 점들, 원하는 자리에서 가까운 순)
+        let d: string
+        let spots: [number, number][]
+        if (between) {
+          const sx = ax < s.x ? s.l : s.r
+          const dir = ax < sx ? -1 : 1
+          d = `M ${sx} ${s.y} H ${ax - dir * 10} Q ${ax} ${s.y} ${ax} ${s.y + 10} V ${t.t}`
+          spots = []
+          for (let y = s.b + 4; y < t.t - 12; y += 6) spots.push([ax, y])
+          const want = (s.b + t.t) / 2
+          spots.sort((a, b) => Math.abs(a[1] - want) - Math.abs(b[1] - want))
+        } else {
+          const my = (s.b + t.t) / 2
+          d = `M ${s.x} ${s.b} C ${s.x} ${my} ${ax} ${my} ${ax} ${t.t}`
+          // 받는 쪽 가까이(0.62)가 먼저: 한 칸에서 여러 갈래가 나가도 라벨끼리 덜 겹친다
+          const at = (u: number): [number, number] => {
+            const v = 1 - u
+            return [(v ** 3 + 3 * v * v * u) * s.x + (3 * v * u * u + u ** 3) * ax, v ** 3 * s.b + 3 * v * u * my + u ** 3 * t.t]
+          }
+          spots = [0.62, 0.55, 0.7, 0.48, 0.78, 0.4, 0.32, 0.86].map(at)
+        }
+        const dashed = item.dataset.kind === 'grpc'
+        lines.push(path(d, dashed), path(`M ${ax - 5} ${t.t - 8} L ${ax} ${t.t} L ${ax + 5} ${t.t - 8}`, false))
+        const tag = tags[i]
+        if (!tag) return
+        const w = tag.offsetWidth
+        const h = tag.offsetHeight
+        // 후보마다 선 가운데 · 선 오른쪽 · 선 왼쪽(그리고 그림 안으로 당긴 자리)에 놓아 보고, 칸 · 앞서 단 라벨과 겹치지 않는 첫 자리
+        const free = (x: number, y: number) => x >= 0 && x + w <= area.width && !taken.some((p) => x < p.r && x + w > p.l && y < p.b && y + h > p.t)
+        const first = spots[0]
+        let pick: [number, number] = [Math.min(Math.max(first[0] - w / 2, 0), area.width - w), first[1] - h / 2]
+        search: for (const [lx, ly] of spots)
+          for (const x of [lx - w / 2, lx + 6, lx - w - 6].flatMap((x) => [x, Math.min(Math.max(x, 0), area.width - w)]))
+            if (free(x, ly - h / 2)) {
+              pick = [x, ly - h / 2]
+              break search
+            }
+        tag.style.left = `${pick[0]}px`
+        tag.style.top = `${pick[1]}px`
+        taken.push({ l: pick[0], r: pick[0] + w, t: pick[1], b: pick[1] + h, x: 0, y: 0 })
+      })
+      svg.replaceChildren(...lines)
+    }
+    new ResizeObserver(draw).observe(board)
+    draw()
+  })
+
+  document.querySelectorAll<HTMLElement>('[data-doc-tree]').forEach((root) => {
+    const items = Array.from(root.querySelectorAll<HTMLElement>('[data-tree-path]'))
+    const inspector = root.querySelector<HTMLElement>('[data-tree-inspector]')!
+    const path = root.querySelector<HTMLElement>('[data-tree-selected-path]')!
+    const description = root.querySelector<HTMLElement>('[data-tree-selected-description]')!
+    root.dataset.enhanced = 'true'
+    inspector.hidden = false
+    const select = (item: HTMLElement) => {
+      items.forEach((node) => { node.dataset.selected = String(node === item) })
+      path.textContent = item.dataset.treePath ?? ''
+      description.textContent = item.dataset.treeDescription ?? ''
+    }
+    items.forEach((item) => item.addEventListener('click', () => select(item)))
+    if (items[0]) select(items[0])
+  })
+
+  document.querySelectorAll<HTMLElement>('[data-doc-flow]').forEach((root) => {
+    const steps = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-di-step]'))
+    const play = root.querySelector<HTMLButtonElement>('[data-di-play]')!
+    const detail = root.querySelector<HTMLElement>('[data-di-detail]')!
+    const progress = root.querySelector<HTMLElement>('[data-di-progress]')!
+    const branches = root.querySelector<HTMLElement>('[data-branch-step]')
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+    let current = 0
+    let playing = false
+    let entered = false
+    let visible = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const select = (index: number) => {
+      current = index
+      root.dataset.step = String(index)
+      steps.forEach((step, i) => {
+        if (i === index) step.setAttribute('aria-current', 'step')
+        else step.removeAttribute('aria-current')
+      })
+      if (branches) branches.dataset.active = String(index === Number(branches.dataset.branchStep))
+      detail.textContent = steps[index].dataset.diDescription ?? ''
+      progress.textContent = `${index + 1} / ${steps.length}`
+    }
+    const pause = () => {
+      clearTimeout(timer)
+      playing = false
+      play.textContent = '흐름 재생'
+      play.setAttribute('aria-label', '흐름 재생')
+    }
+    const advance = () => {
+      timer = setTimeout(() => {
+        if (!visible || document.hidden || reduced.matches) return pause()
+        if (current === steps.length - 1) return pause()
+        select(current + 1)
+        advance()
+      }, 2200)
+    }
+    const start = () => {
+      if (reduced.matches) return
+      pause()
+      select(0)
+      playing = true
+      play.textContent = '일시정지'
+      play.setAttribute('aria-label', '흐름 일시정지')
+      advance()
+    }
+    play.hidden = reduced.matches
+    play.addEventListener('click', () => { if (playing) pause(); else start() })
+    steps.forEach((step, index) => {
+      step.parentElement!.style.setProperty('--di-order', String(index))
+      step.addEventListener('click', () => { pause(); select(index) })
+    })
+    reduced.addEventListener('change', () => { pause(); play.hidden = reduced.matches })
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
+    new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting
+      root.dataset.visible = String(visible)
+      if (visible && !entered) { entered = true; start() }
+      else if (!visible) pause()
+    }, { threshold: 0.25 }).observe(root)
+  })
+</script>

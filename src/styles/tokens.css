@@ -1,0 +1,96 @@
+/*
+ * 디자인 토큰. 값은 여기만 두고 컴포넌트 · 페이지는 var(--...) 로 쓴다.
+ * 색은 시스템 색. light-dark(라이트, 다크) 한 줄로 두 벌을 적고, 어느 쪽을 쓸지는 color-scheme 이 정한다:
+ * 기본은 시스템 설정, <html data-theme="light|dark"> 면 그쪽 (ThemeSwitch 가 정하고 Base 의 head 스크립트가 첫 화면 전에 되살린다)
+ */
+/*
+ * 랜딩의 손글씨: 개구쟁이체(Gaegu, SIL OFL)에서 랜딩에 쓰는 글자만 뽑은 것. 받는 법 · 검사는 scripts/sketch-font.mjs
+ * (pnpm build 가 랜딩에 받아 둔 글자 밖의 글자가 있으면 실패한다)
+ */
+@font-face {
+  font-family: 'iStack Sketch';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/sketch-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'iStack Sketch';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/sketch-700.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* 글자: 1차 · 2차(설명) · 3차(흐린 보조) */
+  --label: light-dark(#000, #fff);
+  --secondary-label: light-dark(rgb(60 60 67 / 0.6), rgb(235 235 245 / 0.6));
+  --tertiary-label: light-dark(rgb(60 60 67 / 0.3), rgb(235 235 245 / 0.3));
+  --separator: light-dark(rgb(60 60 67 / 0.14), rgb(84 84 88 / 0.5));
+
+  /* 배경: 페이지 · 그 위 한 단계(코드 · 카드 · 눌림) · 그룹 목록 바탕 */
+  --background: light-dark(#fff, #000);
+  --secondary-background: light-dark(#f2f2f7, #1c1c1e);
+  --grouped-background: light-dark(#f2f2f7, #000);
+  --grouped-item: light-dark(#fff, #1c1c1e);
+
+  /* 강조: 링크 · 포커스 = 파랑. 주황 · 인디고는 배너 그림의 층 색 (contract · servers) */
+  --accent: light-dark(#007aff, #0a84ff);
+  --on-accent: #fff;
+  --orange: light-dark(#ff9500, #ff9f0a);
+  --indigo: light-dark(#5856d6, #5e5ce6);
+  /* 로고 · 랜딩 3D 스택의 층 색: clients 보라 · contract 청록 · servers 호박. 글자로 쓸 때는 라이트에서 진하게 (흰 바탕에서 읽히게) */
+  --layer-clients: light-dark(#6a4be0, #9878ff);
+  --layer-contract: light-dark(#0b8794, #28cbd8);
+  --layer-servers: light-dark(#a3620a, #ffcb7a);
+  /* 랜딩의 스케치 종이: 따뜻한 미색 종이 · 다크는 먹색 종이, 그 위의 파란 연필 모눈 */
+  --paper: light-dark(#f4efe3, #161513);
+  --paper-grid: light-dark(rgb(64 90 170 / 0.16), rgb(235 235 245 / 0.07));
+  /* 스크롤바 손잡이: 연필(라이트) · 분필(다크) 색. 길은 투명해서 바탕(종이)이 그대로 보인다 */
+  --scrollbar-thumb: light-dark(rgb(60 56 48 / 0.34), rgb(235 235 245 / 0.3));
+  --scrollbar-thumb-hover: light-dark(rgb(60 56 48 / 0.55), rgb(235 235 245 / 0.5));
+
+  /* 글꼴. 웹 폰트는 랜딩의 손글씨 하나뿐 (위 @font-face) */
+  --font: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', 'Noto Sans KR', sans-serif;
+  --font-sketch: 'iStack Sketch', var(--font);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'D2Coding', monospace;
+
+  /* 글자 크기 (본문 16px) */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.5rem;
+
+  /* 간격: 4px 배수 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  --radius-sm: 6px;
+  --radius: 12px;
+  --radius-lg: 16px;
+
+  /* 폭: 본문 줄 길이 · 페이지 전체 · 옆 칸 */
+  --width-prose: 720px;
+  --width-page: 1280px;
+  --width-sidebar: 288px;
+  --width-toc: 232px;
+  --header-height: 56px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}

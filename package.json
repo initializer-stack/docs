@@ -1,0 +1,21 @@
+{
+  "name": "initializer-stack-docs",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "dev": "node scripts/sync.mjs && astro dev",
+    "build": "node scripts/sync.mjs && astro build && pagefind --site dist && node scripts/sketch-font.mjs --check && node scripts/check-links.mjs",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "@astrojs/markdown-satteri": "0.4.4",
+    "@astrojs/mdx": "^8.1.0",
+    "@types/three": "^0.186.0",
+    "astro": "^7.4.0",
+    "pagefind": "^1.5.2"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

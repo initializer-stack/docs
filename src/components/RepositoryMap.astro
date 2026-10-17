@@ -1,0 +1,409 @@
+---
+const id = `repository-map-${crypto.randomUUID()}`
+const folders = [
+  {
+    name: 'servers',
+    label: '서버 코드',
+    preview: ['서버 넷'],
+    title: '서버 하나에 폴더 하나',
+    description: '서버마다 언어와 프레임워크를 선택합니다. 각 서버의 코드에서 OpenAPI 문서를 생성하고, 공통 proto 에서 gRPC 코드를 생성합니다.',
+    files: ['notes/', 'tags/', 'activity/', 'templates/'],
+    link: '/guides/add-server/',
+    linkLabel: '서버 추가',
+  },
+  {
+    name: 'contract',
+    label: '공유 계약',
+    preview: ['OpenAPI · 타입 · proto'],
+    title: '서버와 클라이언트를 잇는 계약',
+    description: '서버 코드에서 생성한 OpenAPI 문서와 TypeScript 타입을 모읍니다. 서버 간 gRPC 통신에 쓰는 공통 proto 도 이곳에서 관리합니다.',
+    files: ['openapi/', 'proto/', 'index.ts'],
+    link: '/reference/contracts/',
+    linkLabel: '계약 구조',
+  },
+  {
+    name: 'clients',
+    label: '클라이언트',
+    preview: ['웹 · 모바일 · 데스크톱'],
+    title: '여러 앱에서 같은 계약 사용',
+    description: 'web · admin · site · lite · mobile · desktop 앱과 공통 @app/client 를 둡니다. 각 앱은 서버가 생성한 타입으로 API 를 호출합니다.',
+    files: ['apps/', 'packages/client/'],
+    link: '/guides/add-app/',
+    linkLabel: '앱 추가',
+  },
+  {
+    name: 'docker',
+    label: '실행 환경',
+    preview: ['Postgres · compose'],
+    title: 'DB 부터 전체 스택까지 실행',
+    description: 'Postgres 와 전체 스택의 compose 설정을 모읍니다. pnpm infra 로 DB 를 실행하고, pnpm stack 으로 서버와 웹 앱의 이미지를 함께 실행해 smoke 테스트를 수행합니다.',
+    files: ['postgres/', 'docker-compose.yaml', 'smoke.sh'],
+    link: '/getting-started/first-run/',
+    linkLabel: '실행 방법',
+  },
+  {
+    name: 'docs',
+    label: '규칙과 설계',
+    preview: ['개발 규칙 · ADR'],
+    title: '함께 쓰는 규칙과 설계 결정',
+    description: '구조 · 계약 · 테스트 · 개발 방법과 ADR 을 기록합니다. 이 사이트의 레퍼런스는 해당 문서를 옮겨 보여줍니다.',
+    files: ['architecture.md', 'contracts.md', 'decisions/'],
+    link: '/reference/',
+    linkLabel: '레퍼런스',
+  },
+]
+---
+
+<section class="repo-map" data-repository-map data-selected="contract" data-motion="paused" aria-label="iStack 폴더 구조" style={`--rough: url(#${id}-rough)`}>
+  <!-- 연필 떨림: 테두리 · 아이콘 · 선을 잡음으로 살짝 흔든다. 씨앗을 1 초에 8 번 바꿔 손그림 애니메이션처럼 떨고, 모션을 멈추면 같이 멈춘다 -->
+  <svg class="sketch-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id={`${id}-rough`} x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="1">
+        <animate attributeName="seed" values="1;2;3" dur="0.375s" calcMode="discrete" repeatCount="indefinite" />
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" scale="3" />
+    </filter>
+  </svg>
+  <div class="map-header">
+    <span class="root-name"><span aria-hidden="true">⌘</span> iStack/</span>
+    <button class="motion-control" type="button" data-motion-control aria-label="구조 모션 재생" aria-pressed="false" hidden>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path class="pause-icon" d="M4 3H6.5V13H4ZM9.5 3H12V13H9.5Z" />
+        <path class="play-icon" d="M5 2.5L13 8L5 13.5Z" />
+      </svg>
+      <span data-motion-label>모션 재생</span>
+    </button>
+  </div>
+
+  <div class="map-stage">
+    <svg class="connections" viewBox="0 0 600 300" preserveAspectRatio="none" fill="none" aria-hidden="true">
+      <path class="wire wire-build" d="M182 90H220" />
+      <path class="wire wire-types" d="M380 90H418" />
+      <path class="support-wire" d="M100 145V164H500V145M300 145V164M150 164V180M450 164V180" />
+      <path class="arrow" d="M212 85L218 90L212 95M410 85L416 90L410 95" />
+      <circle class="packet packet-build" cx="184" cy="90" r="3.5" />
+      <circle class="packet packet-types" cx="382" cy="90" r="3.5" />
+    </svg>
+    <span class="flow-label flow-build">문서 · 타입 생성</span>
+    <span class="flow-label flow-types">타입 사용</span>
+    <div class="folder-tabs" role="tablist" aria-label="폴더 선택">
+      {folders.map((folder) => (
+        <button
+          class={`folder folder-${folder.name}`}
+          type="button"
+          role="tab"
+          id={`${id}-tab-${folder.name}`}
+          aria-controls={`${id}-panel-${folder.name}`}
+          aria-selected={folder.name === 'contract' ? 'true' : 'false'}
+          tabindex={folder.name === 'contract' ? 0 : -1}
+          data-folder={folder.name}
+        >
+          <svg class="folder-icon" width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden="true">
+            <path class="folder-back" d="M3 5A3 3 0 016 2H13L17 6H28A3 3 0 0131 9V23A3 3 0 0128 26H6A3 3 0 013 23Z" stroke="currentColor" stroke-width="1.4" opacity=".55" />
+            <g class="folder-front">
+              <path d="M3 12A3 3 0 016 9H28A3 3 0 0131 12V24A3 3 0 0128 27H6A3 3 0 013 24Z" fill="currentColor" fill-opacity=".18" stroke="currentColor" stroke-width="1.6" />
+              <path d="M3.6 11.4A3 3 0 016.6 8.6H28.4A3 3 0 0131.2 11.8V24.2A3 3 0 0128.4 26.6H6.4A3 3 0 013.4 23.8Z" stroke="currentColor" stroke-width=".8" opacity=".6" />
+            </g>
+          </svg>
+          <span class="folder-name">{folder.name}/</span>
+          <span class="folder-label">{folder.label}</span>
+          <span class="folder-preview">{folder.preview.join(' · ')}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <div class="folder-details">
+    {folders.map((folder) => (
+      <div
+        class="folder-panel"
+        role="tabpanel"
+        id={`${id}-panel-${folder.name}`}
+        aria-labelledby={`${id}-tab-${folder.name}`}
+        tabindex="0"
+        hidden={folder.name !== 'contract'}
+      >
+        <div class="detail-heading">
+          <span class="detail-title">{folder.title}</span>
+          <a href={folder.link}>{folder.linkLabel}<span aria-hidden="true"> ↗</span></a>
+        </div>
+        <p>{folder.description}</p>
+        <div class="file-list" aria-label={`${folder.name} 안의 파일과 폴더`}>
+          {folder.files.map((file) => <span>{file}</span>)}
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <noscript>
+    <dl class="static-folders">
+      {folders.map((folder) => <><dt>{folder.name}/</dt><dd>{folder.description}</dd></>)}
+    </dl>
+  </noscript>
+</section>
+
+<style>
+  /* 스케치: 랜딩과 같은 종이 · 파란 연필 모눈 위에, 카드 · 아이콘 · 선을 연필로 (--rough = 떨림 필터) */
+  .repo-map {
+    --map-color: var(--orange);
+    --pencil: color-mix(in srgb, var(--label) 62%, transparent);
+    position: relative;
+    margin: var(--space-6) 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--paper);
+    background-image: linear-gradient(var(--paper-grid) 1px, transparent 1px), linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: center;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .sketch-defs { position: absolute; width: 0; height: 0; }
+  .repo-map[data-selected='servers'] { --map-color: var(--indigo); }
+  .repo-map[data-selected='clients'] { --map-color: var(--accent); }
+  .repo-map[data-selected='docker'],
+  .repo-map[data-selected='docs'] { --map-color: var(--label); }
+  .map-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-6) var(--space-6) 0;
+  }
+  .root-name {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  .root-name > span { margin-right: var(--space-2); color: var(--secondary-label); }
+  .motion-control {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--secondary-label);
+    font: inherit;
+    font-size: var(--text-xs);
+    cursor: pointer;
+  }
+  .motion-control[hidden] { display: none; }
+  .motion-control:hover { background: color-mix(in srgb, var(--label) 6%, transparent); color: var(--label); }
+  .repo-map[data-motion='playing'] .play-icon,
+  .repo-map[data-motion='paused'] .pause-icon { display: none; }
+  .map-stage { position: relative; padding: var(--space-12) var(--space-4) var(--space-6); }
+  .connections {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    pointer-events: none;
+    filter: var(--rough);
+  }
+  .wire, .support-wire, .arrow { stroke: var(--pencil); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .wire { stroke-dasharray: 4 5; }
+  .support-wire { opacity: .5; }
+  .packet { fill: none; stroke: var(--orange); stroke-width: 1.8; animation: packet-travel 2.8s linear infinite; }
+  .packet-types { stroke: var(--accent); animation-delay: 1.2s; }
+  .flow-label {
+    position: absolute;
+    top: var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--secondary-label);
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .flow-build { left: 33%; }
+  .flow-types { left: 67%; }
+  .folder-tabs {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-12) var(--space-3);
+  }
+  .folder {
+    --folder-color: var(--label);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    grid-column: span 2;
+    justify-self: center;
+    width: calc(100% - 24px);
+    min-width: 0;
+    min-height: 160px;
+    padding: var(--space-4) var(--space-2);
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--label);
+    font: inherit;
+    cursor: pointer;
+  }
+  /* 카드: 흰 판 대신 연필 테두리 두 줄 (조금 어긋나게). 고른 카드는 그 색의 빗금. 글자는 흔들리지 않게 테두리 · 빗금만 필터 */
+  .folder::before,
+  .folder::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1.6px solid var(--card-pencil, var(--pencil));
+    border-radius: 11px 15px 12px 9px;
+    filter: var(--rough);
+    pointer-events: none;
+    transition: background-color 300ms ease, border-color 300ms ease;
+  }
+  .folder::before { rotate: -0.5deg; }
+  .folder::after {
+    inset: 5px 1px 1px 5px;
+    border-width: 1px;
+    border-radius: 14px 9px 13px 11px;
+    rotate: 0.6deg;
+    opacity: .55;
+  }
+  .folder-servers { --folder-color: var(--indigo); }
+  .folder-contract { --folder-color: var(--orange); }
+  .folder-clients { --folder-color: var(--accent); }
+  .folder-docker, .folder-docs {
+    grid-column: span 3;
+    width: 100%;
+    min-height: 112px;
+  }
+  .folder-icon { color: var(--folder-color); flex-shrink: 0; margin-bottom: var(--space-2); filter: var(--rough); }
+  .folder-front { transform-origin: 3px 27px; transition: transform 300ms ease; }
+  .folder-name { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; }
+  .folder-label { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--secondary-label); }
+  .folder-preview { margin-top: var(--space-2); font-size: var(--text-xs); color: var(--secondary-label); }
+  .folder[aria-selected='true'] { --card-pencil: var(--folder-color); }
+  .folder[aria-selected='true']::before {
+    background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--folder-color) 26%, transparent) 0 1.4px, transparent 1.4px 8px);
+  }
+  .folder[aria-selected='true'] .folder-front { transform: skewX(-10deg) scaleY(.88); }
+  .folder:hover:not([aria-selected='true'])::before {
+    background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--folder-color) 12%, transparent) 0 1.2px, transparent 1.2px 10px);
+  }
+  .folder-details { padding: 0 var(--space-6) var(--space-6); }
+  .folder-panel { min-height: 172px; }
+  .folder-panel[hidden] { display: none; }
+  .detail-heading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); }
+  .detail-title { font-size: var(--text-base); font-weight: 600; }
+  .detail-heading a { flex-shrink: 0; font-size: var(--text-xs); }
+  .repo-map .folder-panel p { margin: var(--space-2) 0 var(--space-4); font-size: var(--text-sm); color: var(--secondary-label); }
+  .file-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .file-list > span {
+    position: relative;
+    padding: var(--space-1) var(--space-2);
+    color: var(--secondary-label);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+  .file-list > span::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1.2px solid var(--pencil);
+    border-radius: 5px 7px 6px 4px;
+    opacity: .7;
+    filter: var(--rough);
+  }
+  .static-folders { padding: 0 var(--space-6) var(--space-6); font-size: var(--text-sm); }
+  .static-folders dt { margin-top: var(--space-4); font-family: var(--font-mono); font-weight: 600; }
+  .static-folders dd { margin: var(--space-1) 0 0; color: var(--secondary-label); }
+  .repo-map[data-enhanced] .folder-panel:not([hidden]) { animation: panel-enter 300ms ease both; }
+  .repo-map[data-visible='true'][data-entered='false'] .folder { animation: folder-enter 650ms cubic-bezier(.2,.7,.2,1) both; }
+  .folder:nth-child(2) { animation-delay: 100ms; }
+  .folder:nth-child(3) { animation-delay: 200ms; }
+  .folder:nth-child(4) { animation-delay: 300ms; }
+  .folder:nth-child(5) { animation-delay: 400ms; }
+  .repo-map[data-motion='paused'] .packet,
+  .repo-map:not([data-visible='true']) .packet { animation-play-state: paused; opacity: 0; }
+  @keyframes packet-travel {
+    0% { transform: translateX(0); opacity: 0; }
+    15%, 80% { opacity: 1; }
+    100% { transform: translateX(32px); opacity: 0; }
+  }
+  @keyframes folder-enter { from { opacity: 0; translate: 0 20px; } to { opacity: 1; translate: 0 0; } }
+  @keyframes panel-enter { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+  @media (max-width: 560px) {
+    .map-header { padding: var(--space-4) var(--space-4) 0; }
+    .map-stage { padding-inline: var(--space-2); }
+    .folder-tabs { column-gap: var(--space-2); }
+    .folder { min-height: 144px; padding-inline: var(--space-1); }
+    .folder { width: calc(100% - 8px); }
+    .folder-docker, .folder-docs { min-height: 112px; }
+    .folder-name { font-size: var(--text-xs); }
+    .folder-preview { display: none; }
+    .folder-docker .folder-preview, .folder-docs .folder-preview { display: block; }
+    .folder-details { padding: 0 var(--space-4) var(--space-4); }
+    .detail-heading { flex-direction: column; gap: var(--space-1); }
+    .folder-panel { min-height: 216px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .repo-map .folder, .repo-map .folder-panel, .repo-map .packet { animation: none !important; }
+    .repo-map *, .repo-map *::before, .repo-map *::after { transition: none !important; }
+    .packet { display: none; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-repository-map]').forEach((root) => {
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+    const panels = Array.from(root.querySelectorAll<HTMLElement>('[role="tabpanel"]'))
+    const motion = root.querySelector<HTMLButtonElement>('[data-motion-control]')!
+    const motionLabel = root.querySelector<HTMLElement>('[data-motion-label]')!
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+    const sketch = root.querySelector<SVGSVGElement>('.sketch-defs')!
+    let playing = !reduced.matches
+    let visible = false
+    // 연필 떨림(SMIL)은 모션을 켰고 화면에 보일 때만
+    const boil = () => (playing && visible ? sketch.unpauseAnimations() : sketch.pauseAnimations())
+
+    root.dataset.enhanced = 'true'
+    root.dataset.entered = 'false'
+    motion.hidden = false
+
+    function select(index: number) {
+      tabs.forEach((tab, i) => {
+        tab.setAttribute('aria-selected', String(i === index))
+        tab.tabIndex = i === index ? 0 : -1
+        panels[i].hidden = i !== index
+      })
+      root.dataset.selected = tabs[index].dataset.folder
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => select(index))
+      tab.addEventListener('keydown', (event) => {
+        let next = index
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % tabs.length
+        else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index - 1 + tabs.length) % tabs.length
+        else if (event.key === 'Home') next = 0
+        else if (event.key === 'End') next = tabs.length - 1
+        else return
+        event.preventDefault()
+        select(next)
+        tabs[next].focus()
+      })
+    })
+
+    function updateMotion() {
+      root.dataset.motion = playing ? 'playing' : 'paused'
+      motion.setAttribute('aria-pressed', String(playing))
+      motion.setAttribute('aria-label', playing ? '구조 모션 일시정지' : '구조 모션 재생')
+      motionLabel.textContent = playing ? '모션 정지' : '모션 재생'
+      boil()
+    }
+    motion.addEventListener('click', () => { playing = !playing; updateMotion() })
+    reduced.addEventListener('change', () => { playing = !reduced.matches; updateMotion() })
+    updateMotion()
+
+    const observer = new IntersectionObserver(([entry]) => {
+      root.dataset.visible = String(entry.isIntersecting)
+      visible = entry.isIntersecting
+      boil()
+    }, { threshold: 0.15 })
+    observer.observe(root)
+    tabs[4].addEventListener('animationend', () => { root.dataset.entered = 'true' }, { once: true })
+  })
+</script>

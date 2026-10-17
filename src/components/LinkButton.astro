@@ -1,0 +1,59 @@
+---
+// 버튼처럼 생긴 링크 (스케치). primary = 먹으로 칠한 상자, secondary = 연필 테두리 두 줄
+// 테두리 · 칠은 바깥에서 준 --rough(연필 떨림 필터)로 흔든다. 없으면 곧은 선. 글자는 흔들지 않는다
+interface Props {
+  href: string
+  variant?: 'primary' | 'secondary'
+}
+const { href, variant = 'primary' } = Astro.props
+---
+
+<a class={variant} href={href}><slot /></a>
+
+<style>
+  a {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 var(--space-6);
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--label);
+    text-decoration: none;
+    transition: translate 150ms ease;
+  }
+  a::before,
+  a::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border: 1.8px solid var(--label);
+    border-radius: 14px 18px 15px 12px;
+    filter: var(--rough, none);
+  }
+  a::before {
+    rotate: -0.8deg;
+  }
+  a::after {
+    inset: 3px -2px -1px 3px;
+    border-width: 1.3px; /* 더 가늘면 떨림 필터에 끊겨 점선처럼 보인다 */
+    border-radius: 17px 12px 16px 14px;
+    rotate: 0.9deg;
+    opacity: 0.5;
+  }
+  .primary {
+    color: var(--background);
+  }
+  .primary::before {
+    background: var(--label);
+  }
+  .secondary:hover::before {
+    background: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--label) 18%, transparent) 0 1.2px, transparent 1.2px 7px);
+  }
+  a:hover {
+    translate: 0 -1px;
+  }
+</style>

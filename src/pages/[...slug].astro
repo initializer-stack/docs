@@ -1,0 +1,30 @@
+---
+// 문서 · 레퍼런스 페이지 전부. 주소 = 파일 위치 (src/content/docs/getting-started/first-run.md → /getting-started/first-run/)
+import { getCollection, render } from 'astro:content'
+import Doc from '../layouts/Doc.astro'
+import { plainMarkdown } from '../lib/plain-markdown'
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs')
+  const template = await getCollection('template')
+  return [
+    ...docs.map((entry) => ({
+      params: { slug: entry.id },
+      props: { entry, edit: `https://github.com/initializer-stack/docs/edit/main/${entry.filePath}` },
+    })),
+    // 템플릿 문서의 사본이라 고치는 곳도 템플릿 (sync 가 원래 경로를 source 로 남긴다)
+    ...template.map((entry) => ({
+      params: { slug: entry.id },
+      props: { entry, edit: `https://github.com/initializer-stack/template/edit/main/${entry.data.source}` },
+    })),
+  ]
+}
+
+const { entry, edit } = Astro.props
+const { Content, headings } = await render(entry)
+// 제목은 마크다운의 첫 # 줄 (템플릿 문서도 그대로). 설명은 frontmatter 의 description (이 저장소의 글만)
+const title = headings.find((h) => h.depth === 1)?.text ?? ''
+const description = typeof entry.data.description === 'string' ? entry.data.description : undefined
+---
+
+<Doc title={title} description={description} headings={headings} editUrl={edit} source={plainMarkdown(entry.body)}><Content /></Doc>

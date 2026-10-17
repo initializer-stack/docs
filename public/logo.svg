@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="360" viewBox="0 0 320 360" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">iStack</title>
+  <desc id="desc">Three pencil-sketched layers in violet, cyan, and amber, hatched and outlined twice, form a single stack.</desc>
+  <!-- 랜딩의 스케치와 같은 말투: 옅은 칠 + 연필 빗금 + 두 번 그은 테두리. 탭 바탕이 밝든 어둡든 보이게 중간 밝기의 연필 색 -->
+  <defs>
+    <path id="t" d="M159 25L292 99L161 176L27 101Z"/>
+    <path id="m" d="M28 137L161 211L291 135V181L159 256L29 179Z"/>
+    <path id="b" d="M29 215L160 293L292 217V259L160 335L27 261Z"/>
+    <pattern id="ht" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><path d="M0 13H26" stroke="#7B5CF0" stroke-width="6"/></pattern>
+    <pattern id="hm" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><path d="M0 13H26" stroke="#1FA5B3" stroke-width="6"/></pattern>
+    <pattern id="hb" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><path d="M0 13H26" stroke="#D08A1E" stroke-width="6"/></pattern>
+  </defs>
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <use href="#b" fill="#FFCB7A" fill-opacity=".45"/>
+    <use href="#b" fill="url(#hb)"/>
+    <use href="#b" stroke="#D08A1E" stroke-width="15"/>
+    <use href="#b" stroke="#D08A1E" stroke-width="7" transform="rotate(1.4 160 275) translate(6 -5)"/>
+    <use href="#m" fill="#28CBD8" fill-opacity=".4"/>
+    <use href="#m" fill="url(#hm)"/>
+    <use href="#m" stroke="#1FA5B3" stroke-width="15"/>
+    <use href="#m" stroke="#1FA5B3" stroke-width="7" transform="rotate(-1.2 160 196) translate(-5 4)"/>
+    <use href="#t" fill="#9878FF" fill-opacity=".4"/>
+    <use href="#t" fill="url(#ht)"/>
+    <use href="#t" stroke="#7B5CF0" stroke-width="15"/>
+    <use href="#t" stroke="#7B5CF0" stroke-width="7" transform="rotate(1.6 160 100) translate(5 -4)"/>
+  </g>
+</svg>

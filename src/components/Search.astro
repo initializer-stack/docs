@@ -1,0 +1,95 @@
+---
+// 검색 창 (⌘K · Ctrl+K · [data-search-open]). 색인은 빌드 때 pagefind 가 dist/pagefind 에 만든다
+// 개발 서버에는 색인이 없어 안내만 보인다
+---
+
+<dialog id="search" aria-label="검색">
+  <div id="search-ui"></div>
+  <p class="note" hidden>검색은 빌드한 사이트에서 동작합니다 (<code>pnpm build && pnpm preview</code>).</p>
+</dialog>
+
+<script>
+  const dialog = document.getElementById('search') as HTMLDialogElement
+  const note = dialog.querySelector<HTMLElement>('.note')!
+  const add = (tag: 'link' | 'script', attrs: Record<string, string>) =>
+    new Promise<void>((resolve, reject) => {
+      const el = Object.assign(document.createElement(tag), attrs)
+      el.onload = () => resolve()
+      el.onerror = () => reject()
+      document.head.append(el)
+    })
+  let ready: Promise<void> | undefined
+  const load = () =>
+    (ready ??= Promise.all([add('link', { rel: 'stylesheet', href: '/pagefind/pagefind-ui.css' }), add('script', { src: '/pagefind/pagefind-ui.js' })])
+      .then(() => {
+        const { PagefindUI } = window as unknown as { PagefindUI: new (o: object) => unknown }
+        new PagefindUI({ element: '#search-ui', showSubResults: true, showImages: false, resetStyles: false })
+      })
+      .catch(() => {
+        note.hidden = false
+      }))
+  const open = async () => {
+    if (!dialog.open) dialog.showModal()
+    await load()
+    dialog.querySelector<HTMLInputElement>('#search-ui input')?.focus()
+  }
+  for (const b of document.querySelectorAll('[data-search-open]')) b.addEventListener('click', open)
+  addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault()
+      if (dialog.open) dialog.close()
+      else open()
+    }
+  })
+  // 창 밖(배경)을 누르면 닫는다
+  dialog.addEventListener('click', (e) => e.target === dialog && dialog.close())
+</script>
+
+<style>
+  dialog {
+    width: min(640px, calc(100vw - 32px));
+    max-height: min(70vh, 640px);
+    margin: 12vh auto auto;
+    padding: var(--space-4);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-lg);
+    color: var(--label);
+    background: var(--background);
+    box-shadow: 0 24px 64px rgb(0 0 0 / 0.24);
+    overflow-y: auto;
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 0.35);
+    backdrop-filter: blur(4px);
+  }
+  .note {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--secondary-label);
+  }
+  /* Pagefind UI 를 토큰 색으로 */
+  #search-ui {
+    --pagefind-ui-scale: 0.9;
+    --pagefind-ui-primary: var(--accent);
+    --pagefind-ui-text: var(--label);
+    --pagefind-ui-background: var(--background);
+    --pagefind-ui-border: var(--separator);
+    --pagefind-ui-tag: var(--secondary-background);
+    --pagefind-ui-border-width: 1px;
+    --pagefind-ui-border-radius: 12px;
+    --pagefind-ui-font: var(--font);
+  }
+  #search-ui :global(.pagefind-ui__result-excerpt),
+  #search-ui :global(.pagefind-ui__message) {
+    color: var(--secondary-label);
+  }
+  #search-ui :global(.pagefind-ui__search-clear) {
+    border: 0;
+    color: var(--secondary-label);
+    background: none;
+  }
+  #search-ui :global(mark) {
+    color: var(--label);
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+</style>
