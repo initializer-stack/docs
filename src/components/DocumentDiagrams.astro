@@ -1,19 +1,16 @@
-<!-- 문서 그림의 연필 떨림: 테두리 · 아이콘을 잡음으로 살짝 흔들고, 씨앗을 1 초에 8 번 바꿔 손그림처럼 떨게 한다 (--rough). 움직임을 줄이면 멈춘다 -->
-<svg class="di-defs" width="0" height="0" aria-hidden="true" focusable="false">
-  <filter id="di-rough" x="-5%" y="-5%" width="110%" height="110%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="1">
-      <animate attributeName="seed" values="1;2;3" dur="0.375s" calcMode="discrete" repeatCount="indefinite" />
-    </feTurbulence>
-    <feDisplacementMap in="SourceGraphic" scale="3" />
-  </filter>
-</svg>
+---
+import { boxMask } from '../lib/sketch.mjs'
+
+// 칸 테두리 세 가지 (--sketch-1..3): 나란한 칸이 같은 모양으로 보이지 않게. 구조 지도(RepositoryMap)도 쓴다
+const masks = [1, 2, 3].map((n) => `--sketch-${n}: ${boxMask(n * 11)};`).join('')
+---
+
+<style is:inline set:html={`:root { ${masks} }`}></style>
 
 <style is:global>
-  /* 스케치: 랜딩 · 구조 지도와 같은 종이 · 파란 연필 모눈 위에, 칸은 연필 테두리 두 줄, 고른 칸은 빗금 */
-  .di-defs { position: absolute; width: 0; height: 0; }
+  /* 스케치: 랜딩 · 구조 지도와 같은 종이 · 파란 연필 모눈 위에, 칸은 손으로 두 번 그은 테두리, 고른 칸은 빗금 */
   .doc-diagram {
     --pencil: color-mix(in srgb, var(--label) 62%, transparent);
-    --rough: url(#di-rough);
     margin: var(--space-6) 0;
     padding: var(--space-6);
     border-radius: var(--radius-lg);
@@ -31,6 +28,7 @@
     position: relative;
     isolation: isolate;
   }
+  /* 칸: ::after = 테두리 (손으로 그은 상자 --sketch-n 을 칸 크기로 늘린 mask 에 연필 색), ::before = 고른 칸의 빗금 */
   .di-step::before, .di-step::after,
   .di-node::before, .di-node::after,
   .di-branches > div::before, .di-branches > div::after,
@@ -39,25 +37,22 @@
     content: '';
     position: absolute;
     z-index: -1;
-    inset: 2px;
-    border: 1.5px solid var(--card-pencil, var(--pencil));
-    border-radius: 11px 15px 12px 9px;
-    filter: var(--rough);
+    inset: 6px;
     pointer-events: none;
-    transition: border-color 300ms ease;
   }
-  .di-step::before, .di-node::before, .di-branches > div::before, .di-tree-inspector::before, .di-play::before { rotate: -0.5deg; }
   .di-step::after, .di-node::after, .di-branches > div::after, .di-tree-inspector::after, .di-play::after {
-    inset: 4px 1px 1px 4px;
-    border-width: 1.2px;
-    border-radius: 14px 9px 13px 11px;
-    rotate: 0.6deg;
-    opacity: 0.5;
+    inset: 0;
+    background-color: var(--card-pencil, var(--pencil));
+    mask: var(--sketch, var(--sketch-1)) 0 0 / 100% 100% no-repeat;
+    transition: background-color 300ms ease;
   }
+  /* 나란한 칸은 테두리 모양을 번갈아 */
+  .di-route > li:nth-child(3n + 2), .di-branches > div:nth-child(2), .di-node:nth-child(3n + 2) { --sketch: var(--sketch-2); }
+  .di-route > li:nth-child(3n + 3), .di-node:nth-child(3n + 3) { --sketch: var(--sketch-3); }
   .di-heading, .di-root { display: flex; align-items: center; gap: var(--space-2); }
   .di-heading { justify-content: space-between; margin-bottom: var(--space-6); font-weight: 600; }
   .di-root { font-family: var(--font-mono); }
-  .di-root svg { color: var(--accent); flex-shrink: 0; filter: var(--rough); }
+  .di-root svg { color: var(--accent); flex-shrink: 0; }
   .di-heading-caption { color: var(--secondary-label); font-size: var(--text-xs); font-weight: 400; }
   .di-play {
     border: 0;
@@ -151,27 +146,25 @@
     position: relative;
     isolation: isolate;
   }
-  .di-tree-folder > summary::before, .di-tree-file::before {
+  /* 트리 항목: 올리면 옅은 빗금, 고르면 파란 빗금과 손으로 그은 테두리(::after) */
+  .di-tree-folder > summary::before, .di-tree-file::before,
+  .di-tree-folder > summary::after, .di-tree-file::after {
     content: '';
     position: absolute;
     z-index: -1;
-    inset: 2px 0;
-    border: 1.8px solid transparent; /* 더 가늘면 떨림 필터에 끊겨 점선처럼 보인다 */
-    border-radius: 6px 9px 7px 5px;
+    inset: 6px 4px;
     pointer-events: none;
   }
-  /* 떨림 필터는 보이는 칸(올린 · 고른)에만 건다: 빈 칸까지 1 초에 8 번 다시 그리지 않게 */
+  .di-tree-folder > summary::after, .di-tree-file::after { inset: 2px 0; mask: var(--sketch-3) 0 0 / 100% 100% no-repeat; }
   .di-tree-folder > summary:hover::before, .di-tree-file:hover::before {
-    filter: var(--rough);
     background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--label) 10%, transparent) 0 1.2px, transparent 1.2px 8px);
   }
   .di-tree-list [data-selected='true']::before, .di-tree-list [data-selected='true']:hover::before {
-    filter: var(--rough);
-    border-color: var(--accent);
     background-image: repeating-linear-gradient(-40deg, color-mix(in srgb, var(--accent) 18%, transparent) 0 1.2px, transparent 1.2px 8px);
   }
+  .di-tree-list [data-selected='true']::after { background-color: var(--accent); }
   .di-tree-folder > summary::-webkit-details-marker { display: none; }
-  .di-tree-folder > summary > svg, .di-tree-file > svg { flex-shrink: 0; color: var(--accent); filter: var(--rough); }
+  .di-tree-folder > summary > svg, .di-tree-file > svg { flex-shrink: 0; color: var(--accent); }
   .di-tree-file > svg { color: var(--secondary-label); }
   .di-tree-folder > summary > span:first-of-type, .di-tree-file > span { min-width: 0; overflow-wrap: anywhere; }
   .di-chevron { margin-left: auto; color: var(--secondary-label); transition: rotate 250ms ease; }
@@ -199,7 +192,7 @@
   .di-node { justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 128px; padding: var(--space-3) var(--space-4); text-align: center; }
   .di-node strong { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; }
   .di-node span { font-size: var(--text-xs); color: var(--secondary-label); }
-  .di-graph-lines { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; overflow: visible; pointer-events: none; filter: var(--rough); }
+  .di-graph-lines { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; overflow: visible; pointer-events: none; }
   .di-graph-lines path { fill: none; stroke: var(--pencil); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   .di-graph-lines .grpc { stroke-dasharray: 5 5; }
   .di-graph-tag {
@@ -239,7 +232,6 @@
 </style>
 
 <script>
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.querySelector<SVGSVGElement>('.di-defs')?.pauseAnimations()
   // 화살표 흐름도: 칸의 자리를 재서 이음을 연필 선으로 그리고 라벨을 단다. 칸 크기가 바뀌면 다시 그린다
   // 받는 칸 윗변의 들어오는 자리는 나눠 쓰고, 사이에 다른 칸이 있는(단을 건너뛰는) 이음은 옆으로 나와 돌아간다
   document.querySelectorAll<HTMLElement>('[data-doc-graph]').forEach((root) => {

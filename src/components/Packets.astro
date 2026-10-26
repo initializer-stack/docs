@@ -1,0 +1,18 @@
+---
+// 그림 위를 오가는 점(요청 · 응답): 층 이름(--layer-*) · 길 · 시작(초). 한 길을 dur 초에 가며 되풀이하고, 길 끝에서 흐려진다.
+// 감싸는 <g class="packets"> 는 쓰는 쪽에 둔다 (움직임을 줄이는 설정에서 숨기는 것도 쓰는 쪽)
+interface Props {
+  list: readonly (readonly [string, string, number, ...number[]])[]
+  dur: number
+}
+const { list, dur } = Astro.props
+---
+
+{
+  list.map(([layer, path, begin]) => (
+    <circle r="4" fill="currentColor" opacity="0" style={`color: var(--layer-${layer})`}>
+      <animateMotion path={path} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.92;1" dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+    </circle>
+  ))
+}
