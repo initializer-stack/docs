@@ -195,14 +195,18 @@ const testing = [
     --ink: color-mix(in srgb, var(--label) 76%, transparent);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.35 0 0 0 0 0.25 0 0 0 0.1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  /* 손글씨(--font-sketch)는 제목 · 이름표 · 그림 글자에. 이 손글씨는 한글 자간이 넓어 조금 좁히고, 작아 보여 크기를 조금 키운다 */
+  /* 제목과 도식은 손글씨로 통일하고, 제품 분류는 본문 글꼴로 읽기 쉽게 */
   h1,
   h2,
   h3,
-  .product,
   .eyebrow,
-  .diagram-text {
+  .diagram-text,
+  .annotation {
     font-family: var(--font-sketch);
+    letter-spacing: -0.02em;
+  }
+  .product {
+    font-family: var(--font);
     letter-spacing: -0.02em;
   }
   .sketch-defs {
@@ -363,11 +367,11 @@ const testing = [
   .diagram-text {
     fill: currentColor;
     text-anchor: middle;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
   }
   .diagram-text.small {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 400;
   }
   .diagram-text.contract-title {
@@ -375,12 +379,14 @@ const testing = [
   }
   .annotation {
     fill: var(--ink);
-    font-family: var(--font-sketch);
+    font-size: 20px;
+  }
+  .feature-diagram .diagram-text {
     font-size: 20px;
   }
   .check-label {
     text-anchor: start;
-    font-size: 19px;
+    font-size: 20px;
     fill: var(--ink);
     font-weight: 400;
   }
