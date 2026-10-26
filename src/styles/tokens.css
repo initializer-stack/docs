@@ -37,7 +37,6 @@
 
   /* 강조: 링크 · 포커스 = 파랑. 주황 · 인디고는 배너 그림의 층 색 (contract · servers) */
   --accent: light-dark(#007aff, #0a84ff);
-  --on-accent: #fff;
   --orange: light-dark(#ff9500, #ff9f0a);
   --indigo: light-dark(#5856d6, #5e5ce6);
   /* 로고 · 랜딩 3D 스택의 층 색: clients 보라 · contract 청록 · servers 호박. 글자로 쓸 때는 라이트에서 진하게 (흰 바탕에서 읽히게) */
@@ -62,8 +61,6 @@
   --text-base: 1rem;
   --text-lg: 1.25rem;
   --text-xl: 1.5rem;
-  --text-2xl: 2rem;
-  --text-3xl: 2.5rem;
 
   /* 간격: 4px 배수 */
   --space-1: 4px;

@@ -1,5 +1,8 @@
 ---
+import { sketch } from '../lib/sketch.mjs'
+
 const id = `repository-map-${crypto.randomUUID()}`
+const sk = sketch(5) // 잇는 선은 손으로 그은 선으로 (lib/sketch)
 const folders = [
   {
     name: 'servers',
@@ -54,16 +57,7 @@ const folders = [
 ]
 ---
 
-<section class="repo-map" data-repository-map data-selected="contract" data-motion="paused" aria-label="iStack 폴더 구조" style={`--rough: url(#${id}-rough)`}>
-  <!-- 연필 떨림: 테두리 · 아이콘 · 선을 잡음으로 살짝 흔든다. 씨앗을 1 초에 8 번 바꿔 손그림 애니메이션처럼 떨고, 모션을 멈추면 같이 멈춘다 -->
-  <svg class="sketch-defs" width="0" height="0" aria-hidden="true" focusable="false">
-    <filter id={`${id}-rough`} x="-5%" y="-5%" width="110%" height="110%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="1">
-        <animate attributeName="seed" values="1;2;3" dur="0.375s" calcMode="discrete" repeatCount="indefinite" />
-      </feTurbulence>
-      <feDisplacementMap in="SourceGraphic" scale="3" />
-    </filter>
-  </svg>
+<section class="repo-map" data-repository-map data-selected="contract" data-motion="paused" aria-label="iStack 폴더 구조">
   <div class="map-header">
     <span class="root-name"><span aria-hidden="true">⌘</span> iStack/</span>
     <button class="motion-control" type="button" data-motion-control aria-label="구조 모션 재생" aria-pressed="false" hidden>
@@ -77,10 +71,10 @@ const folders = [
 
   <div class="map-stage">
     <svg class="connections" viewBox="0 0 600 300" preserveAspectRatio="none" fill="none" aria-hidden="true">
-      <path class="wire wire-build" d="M182 90H220" />
-      <path class="wire wire-types" d="M380 90H418" />
-      <path class="support-wire" d="M100 145V164H500V145M300 145V164M150 164V180M450 164V180" />
-      <path class="arrow" d="M212 85L218 90L212 95M410 85L416 90L410 95" />
+      <path class="wire wire-build" d={sk.line('M182 90H220')} />
+      <path class="wire wire-types" d={sk.line('M380 90H418')} />
+      <path class="support-wire" d={sk.line('M100 145V164H500V145M300 145V164M150 164V180M450 164V180')} />
+      <path class="arrow" d={sk.line('M212 85L218 90L212 95M410 85L416 90L410 95')} />
       <circle class="packet packet-build" cx="184" cy="90" r="3.5" />
       <circle class="packet packet-types" cx="382" cy="90" r="3.5" />
     </svg>
@@ -143,9 +137,8 @@ const folders = [
 </section>
 
 <style>
-  /* 스케치: 랜딩과 같은 종이 · 파란 연필 모눈 위에, 카드 · 아이콘 · 선을 연필로 (--rough = 떨림 필터) */
+  /* 스케치: 랜딩과 같은 종이 · 파란 연필 모눈 위에, 카드 테두리 · 잇는 선은 손으로 그은 선으로 */
   .repo-map {
-    --map-color: var(--orange);
     --pencil: color-mix(in srgb, var(--label) 62%, transparent);
     position: relative;
     margin: var(--space-6) 0;
@@ -157,11 +150,6 @@ const folders = [
     overflow: hidden;
     isolation: isolate;
   }
-  .sketch-defs { position: absolute; width: 0; height: 0; }
-  .repo-map[data-selected='servers'] { --map-color: var(--indigo); }
-  .repo-map[data-selected='clients'] { --map-color: var(--accent); }
-  .repo-map[data-selected='docker'],
-  .repo-map[data-selected='docs'] { --map-color: var(--label); }
   .map-header {
     display: flex;
     align-items: center;
@@ -199,7 +187,6 @@ const folders = [
     height: 100%;
     max-width: none;
     pointer-events: none;
-    filter: var(--rough);
   }
   .wire, .support-wire, .arrow { stroke: var(--pencil); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   .wire { stroke-dasharray: 4 5; }
@@ -242,26 +229,22 @@ const folders = [
     font: inherit;
     cursor: pointer;
   }
-  /* 카드: 흰 판 대신 연필 테두리 두 줄 (조금 어긋나게). 고른 카드는 그 색의 빗금. 글자는 흔들리지 않게 테두리 · 빗금만 필터 */
+  /* 카드: 흰 판 대신 손으로 두 번 그은 테두리(::after, --sketch-n 을 카드 크기로 늘린 mask). 고른 카드는 그 색의 빗금(::before) */
   .folder::before,
   .folder::after {
     content: '';
     position: absolute;
-    inset: 3px;
-    border: 1.6px solid var(--card-pencil, var(--pencil));
-    border-radius: 11px 15px 12px 9px;
-    filter: var(--rough);
+    inset: 8px;
     pointer-events: none;
-    transition: background-color 300ms ease, border-color 300ms ease;
+    transition: background-color 300ms ease;
   }
-  .folder::before { rotate: -0.5deg; }
   .folder::after {
-    inset: 5px 1px 1px 5px;
-    border-width: 1px;
-    border-radius: 14px 9px 13px 11px;
-    rotate: 0.6deg;
-    opacity: .55;
+    inset: 0;
+    background-color: var(--card-pencil, var(--pencil));
+    mask: var(--sketch, var(--sketch-1)) 0 0 / 100% 100% no-repeat;
   }
+  .folder:nth-child(3n + 2) { --sketch: var(--sketch-2); }
+  .folder:nth-child(3n + 3) { --sketch: var(--sketch-3); }
   .folder-servers { --folder-color: var(--indigo); }
   .folder-contract { --folder-color: var(--orange); }
   .folder-clients { --folder-color: var(--accent); }
@@ -270,7 +253,7 @@ const folders = [
     width: 100%;
     min-height: 112px;
   }
-  .folder-icon { color: var(--folder-color); flex-shrink: 0; margin-bottom: var(--space-2); filter: var(--rough); }
+  .folder-icon { color: var(--folder-color); flex-shrink: 0; margin-bottom: var(--space-2); }
   .folder-front { transform-origin: 3px 27px; transition: transform 300ms ease; }
   .folder-name { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; }
   .folder-label { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--secondary-label); }
@@ -302,10 +285,9 @@ const folders = [
     content: '';
     position: absolute;
     inset: 0;
-    border: 1.2px solid var(--pencil);
-    border-radius: 5px 7px 6px 4px;
+    background-color: var(--pencil);
+    mask: var(--sketch-2) 0 0 / 100% 100% no-repeat;
     opacity: .7;
-    filter: var(--rough);
   }
   .static-folders { padding: 0 var(--space-6) var(--space-6); font-size: var(--text-sm); }
   .static-folders dt { margin-top: var(--space-4); font-family: var(--font-mono); font-weight: 600; }
@@ -353,11 +335,7 @@ const folders = [
     const motion = root.querySelector<HTMLButtonElement>('[data-motion-control]')!
     const motionLabel = root.querySelector<HTMLElement>('[data-motion-label]')!
     const reduced = matchMedia('(prefers-reduced-motion: reduce)')
-    const sketch = root.querySelector<SVGSVGElement>('.sketch-defs')!
     let playing = !reduced.matches
-    let visible = false
-    // 연필 떨림(SMIL)은 모션을 켰고 화면에 보일 때만
-    const boil = () => (playing && visible ? sketch.unpauseAnimations() : sketch.pauseAnimations())
 
     root.dataset.enhanced = 'true'
     root.dataset.entered = 'false'
@@ -392,7 +370,6 @@ const folders = [
       motion.setAttribute('aria-pressed', String(playing))
       motion.setAttribute('aria-label', playing ? '구조 모션 일시정지' : '구조 모션 재생')
       motionLabel.textContent = playing ? '모션 정지' : '모션 재생'
-      boil()
     }
     motion.addEventListener('click', () => { playing = !playing; updateMotion() })
     reduced.addEventListener('change', () => { playing = !reduced.matches; updateMotion() })
@@ -400,8 +377,6 @@ const folders = [
 
     const observer = new IntersectionObserver(([entry]) => {
       root.dataset.visible = String(entry.isIntersecting)
-      visible = entry.isIntersecting
-      boil()
     }, { threshold: 0.15 })
     observer.observe(root)
     tabs[4].addEventListener('animationend', () => { root.dataset.entered = 'true' }, { once: true })

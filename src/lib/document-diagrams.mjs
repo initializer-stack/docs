@@ -78,7 +78,7 @@ export function parseTree(source) {
   return root
 }
 
-// 연필로 그린 폴더: 뒤판은 옅은 선, 앞판은 선 + 옅은 칠 (흔들림은 CSS 의 --rough)
+// 연필로 그린 폴더: 뒤판은 옅은 선, 앞판은 선 + 옅은 칠
 const folderIcon = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11H3z" opacity=".55"/><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor" fill-opacity=".18"/></svg>'
 const fileIcon = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg>'
 

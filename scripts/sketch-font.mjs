@@ -7,7 +7,6 @@ const list = 'public/fonts/sketch.txt'
 const html = readFileSync('dist/index.html', 'utf8')
 const text = html
   .replace(/<(script|style)[\s\S]*?<\/\1>/g, ' ')
-  .replace(/data-chapter="([^"]*)"/g, '>$1<') // 장면 모서리의 그림 이름(FIG. 01 — …)은 스크립트가 이 값으로 쓴다
   .replace(/<[^>]*>/g, ' ')
   .replace(/&[a-z0-9#]+;/gi, ' ')
 const ascii = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join('')
