@@ -32,6 +32,7 @@ export const tabs: Tab[] = [
           { label: '템플릿으로 저장소 만들기', link: '/getting-started/' },
           { label: '처음 실행하기', link: '/getting-started/first-run/' },
           { label: 'AI 와 개발하기', link: '/getting-started/agents/' },
+          { label: 'Helm PR 머지 후 배포 확인하기', link: '/getting-started/deployment/' },
         ],
       },
       {

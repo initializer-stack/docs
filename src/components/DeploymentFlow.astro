@@ -1,0 +1,118 @@
+---
+const stages = [
+  ['Helm PR', '운영 values의 notes 이미지와 squash 커밋 SHA를 기록합니다.'],
+  ['Argo CD', '동기화 이력에서 Helm 변경을 포함한 커밋이 적용됐는지 확인합니다.'],
+  ['새 Pod', '새 ReplicaSet의 이미지와 Ready 상태를 확인합니다.'],
+  ['실제 요청', '읽기 요청을 보내 응답의 빌드 식별자나 요청 로그에서 새 버전을 확인합니다.'],
+]
+const scenarios = [
+  { label: '정상 배포', stop: -1 },
+  { label: '동기화 대기', stop: 1, detail: 'Helm PR은 머지됐지만 마지막 성공 동기화는 이전 커밋입니다. Application의 대상 브랜치와 동기화 이력을 확인하세요.' },
+  { label: 'Pod 준비 지연', stop: 2, detail: '새 이미지가 적용됐지만 새 Pod는 Ready=False입니다. 이전 Pod가 요청을 처리할 수 있습니다. 새 Pod의 Events와 로그를 확인하세요.' },
+]
+---
+<deployment-flow hidden>
+  <div class="modes" role="group" aria-label="배포 시나리오">
+    {scenarios.map(({ label, stop, detail }) => <button data-stop={stop} data-detail={detail}>{label}</button>)}
+  </div>
+  <div class="track" role="group" aria-label="배포 단계">
+    <div class="rail" aria-hidden="true"><i></i></div>
+    {stages.map(([label, detail], index) => (
+      <button class="node" data-detail={detail}>
+        <small>{index + 1}</small><strong>{label}</strong><span class="status"></span>
+      </button>
+    ))}
+  </div>
+  <div class="reader">
+    <div aria-live="polite" aria-atomic="true"><strong data-title></strong><p data-description></p></div>
+    <div class="controls"><button data-prev>← 이전</button><button data-next>다음 →</button></div>
+  </div>
+</deployment-flow>
+
+<script>
+  class DeploymentFlow extends HTMLElement {
+    connectedCallback() {
+      const modes = Array.from(this.querySelectorAll<HTMLButtonElement>('[data-stop]'))
+      const nodes = Array.from(this.querySelectorAll<HTMLButtonElement>('.node'))
+      const prev = this.querySelector<HTMLButtonElement>('[data-prev]')!
+      const next = this.querySelector<HTMLButtonElement>('[data-next]')!
+      const rail = this.querySelector<HTMLElement>('.rail')!
+      let mode = modes[0]
+      let step = 0
+
+      const show = (index: number) => {
+        step = index
+        const stop = Number(mode.dataset.stop)
+        const waiting = step === stop
+        rail.style.setProperty('--position', (100 * step / (nodes.length - 1)) + '%')
+        rail.classList.toggle('waiting', waiting)
+        modes.forEach(button => button.setAttribute('aria-pressed', String(button === mode)))
+        nodes.forEach((node, i) => {
+          const current = i === step
+          node.disabled = stop >= 0 && i > stop
+          node.setAttribute('aria-pressed', String(current))
+          node.classList.toggle('blocked', current && waiting)
+          let status = i < step ? '✓ 통과' : '예정'
+          if (current) status = waiting ? 'Ⅱ 여기서 대기' : '확인 중'
+          node.querySelector('.status')!.textContent = status
+        })
+        const node = nodes[step]
+        this.querySelector('[data-title]')!.textContent = (step + 1) + ' / ' + nodes.length + ' · ' + node.querySelector('strong')!.textContent
+        this.querySelector('[data-description]')!.textContent = (waiting ? mode.dataset.detail : node.dataset.detail) ?? ''
+        prev.disabled = step === 0
+        next.disabled = step === nodes.length - 1 || waiting
+      }
+      modes.forEach(button => button.onclick = () => {
+        mode = button
+        rail.classList.add('reset')
+        show(0)
+        // Commit the starting position before enabling movement for the next click.
+        rail.getBoundingClientRect()
+        rail.classList.remove('reset')
+      })
+      nodes.forEach((node, i) => node.onclick = () => show(i))
+      prev.onclick = () => show(step - 1)
+      next.onclick = () => show(step + 1)
+      show(0)
+      this.hidden = false
+    }
+  }
+  customElements.define('deployment-flow', DeploymentFlow)
+</script>
+
+<style>
+  deployment-flow { display: block; margin-block: 1.5rem; border: 1px solid var(--separator); border-radius: var(--radius); overflow: hidden; }
+  deployment-flow[hidden] { display: none; }
+  button { color: var(--label); font: inherit; cursor: pointer; border: 1px solid var(--separator); background: var(--background); border-radius: var(--radius-sm); padding: .4rem .65rem; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: .55; cursor: default; }
+  .modes, .controls { display: flex; flex-wrap: wrap; gap: .4rem; font-size: var(--text-sm); }
+  .modes, .reader { padding: 1rem; }
+  .modes button[aria-pressed=true] { background: var(--label); color: var(--background); }
+  .track { position: relative; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1rem; background: var(--secondary-background); padding: 2.75rem 1rem 1.25rem; }
+  /* Four equal columns with a 1rem gap and 1rem outer padding. */
+  .rail { position: absolute; inset: 1.35rem calc(12.5% + .375rem) auto; height: 3px; background: var(--separator); }
+  .rail::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--position); background: var(--indigo); transition: width 650ms ease-in-out; }
+  .rail i { position: absolute; top: 50%; left: var(--position); transform: translate(-50%, -50%); width: 1rem; height: 1rem; border-radius: 50%; background: var(--indigo); box-shadow: 0 0 0 3px var(--background); transition: left 650ms ease-in-out; }
+  .rail.waiting i { background: var(--layer-servers); }
+  .rail.waiting i::after { content: 'Ⅱ'; display: grid; place-items: center; color: var(--background); font: bold .68rem/1rem var(--font); }
+  .rail.reset i, .rail.reset::before { transition: none; }
+  .node { position: relative; display: grid; justify-items: center; align-content: center; gap: .2rem; line-height: 1.35; padding: .65rem .15rem; }
+  .node:not(:last-child)::after { content: '→'; position: absolute; left: 100%; width: 1rem; top: 50%; transform: translateY(-50%); color: var(--secondary-label); }
+  .node[aria-pressed=true] { outline: 2px solid var(--indigo); }
+  .node.blocked { border: 2px dashed var(--layer-servers); color: var(--layer-servers); outline-color: var(--layer-servers); }
+  .node small, .status { font-size: var(--text-xs); }
+  .reader p { margin: .4rem 0 1rem; }
+  @media (max-width: 600px) {
+    .track { grid-template-columns: 1fr; grid-auto-rows: 1fr; padding: 1rem 1rem 1rem 2.75rem; }
+    .rail { inset: calc(12.5% + .375rem) auto calc(12.5% + .375rem) 1.35rem; width: 3px; height: auto; }
+    .rail::before { width: 100%; height: var(--position); transition-property: height; }
+    .rail i { left: 50%; top: var(--position); transition-property: top; }
+    .node { display: flex; align-items: center; justify-content: start; gap: .6rem; padding: .5rem .75rem; }
+    .status { margin-left: auto; }
+    .node:not(:last-child)::after { content: '↓'; left: 50%; top: 100%; transform: translateX(-50%); line-height: 1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rail i, .rail::before { transition: none; }
+  }
+</style>
